@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - BeamNG Style Edition</title>
+    <title> Yuvan </title>
     <style>
         body {
             margin: 0;
@@ -13,13 +13,13 @@
             user-select: none;
         }
 
-        /* TOP-CENTER SURVIVAL CHANCE BAR */
+        /* TOP-CENTER SURVIVAL CHANCE HUD */
         #survival-hud {
             position: absolute;
             top: 15px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             border: 2px solid #ff6600;
             padding: 8px 25px;
             border-radius: 6px;
@@ -67,7 +67,7 @@
             z-index: 10;
         }
 
-        /* MINI-MAP (Top Left) */
+        /* MINI-MAP (Top Right) */
         #minimap {
             position: absolute;
             top: 15px;
@@ -75,7 +75,7 @@
             width: 140px;
             height: 140px;
             background: rgba(20, 20, 25, 0.9);
-            border: 2px solid #8c7853;
+            border: 2px solid #ff6600;
             border-radius: 50%;
             box-shadow: 0 0 15px rgba(0,0,0,0.8);
             pointer-events: none;
@@ -88,9 +88,9 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(25, 25, 30, 0.96);
+            background: rgba(20, 20, 25, 0.96);
             border: 3px solid #ff6600;
-            padding: 30px;
+            padding: 25px 30px;
             border-radius: 10px;
             color: #fff;
             text-align: center;
@@ -98,7 +98,7 @@
             display: none;
             z-index: 100;
             font-family: sans-serif;
-            width: 650px;
+            width: 620px;
         }
         .modal-menu h2 {
             margin-top: 0;
@@ -115,7 +115,7 @@
             margin-top: 20px;
         }
         .map-card {
-            background: #1a1a20;
+            background: #18181c;
             border: 2px solid #ff6600;
             border-radius: 6px;
             padding: 15px;
@@ -160,25 +160,25 @@
     <canvas id="gauge-canvas" width="400" height="400"></canvas>
     <canvas id="minimap" width="200" height="200"></canvas>
 
-    <!-- E KEY MENU: SELECT LOCATION (MATCHING SCREENSHOT) -->
+    <!-- E KEY MENU: SELECT LOCATION -->
     <div id="map-menu" class="modal-menu">
         <h2>SELECT LOCATION</h2>
         <div class="map-grid">
             <div class="map-card" onclick="changeMap('utah')">
-                <h3>UTAH</h3>
-                <p>Desert canyons, dirt tracks, and rocky terrain.</p>
+                <h3>UTAH CANYON</h3>
+                <p>Red rock canyons, winding dirt roads, and cliff walls.</p>
             </div>
             <div class="map-card" onclick="changeMap('gridmap')">
-                <h3>GRIDMAP</h3>
-                <p>Testing facility with ramps, obstacles, and flat asphalt.</p>
+                <h3>GRIDMAP TESTING GROUND</h3>
+                <p>Concrete ramps, slalom obstacles, and high-speed asphalt.</p>
             </div>
-            <div class="map-card" onclick="changeMap('michigan')">
-                <h3>MICHIGAN</h3>
-                <p>Dense forests, winding countryside roads, and mud.</p>
+            <div class="map-card" onclick="changeMap('city')">
+                <h3>STANDARD GRID</h3>
+                <p>Classic boundary test area with clear grid markings.</p>
             </div>
             <div class="map-card" onclick="changeMap('newyork')">
-                <h3>NEW YORK</h3>
-                <p>Urban city blocks, tight corners, and towering buildings.</p>
+                <h3>CITY DOWNTOWN</h3>
+                <p>Urban streets surrounded by high-rise barrier blocks.</p>
             </div>
         </div>
         <p style="font-size: 11px; color: #aaa; margin-top: 20px;">Press [ E ] to close</p>
@@ -189,7 +189,7 @@
 
     <script>
         // -----------------------------------------------------------
-        // 1. CANVAS ANTIQUE GAUGE RENDERER
+        // 1. GAUGE RENDERER
         // -----------------------------------------------------------
         const canvas = document.getElementById('gauge-canvas');
         const ctx = canvas.getContext('2d');
@@ -310,12 +310,12 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 20, 10);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        directionalLight.position.set(20, 40, 20);
         scene.add(directionalLight);
 
-        const mapSize = 180;
+        const mapSize = 200;
         const groundGeo = new THREE.PlaneGeometry(mapSize, mapSize);
         const groundMat = new THREE.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.8 });
         const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -326,11 +326,15 @@
         grid.position.y = 0.01;
         scene.add(grid);
 
+        // MAP PROPS CONTAINER
+        const mapObjectsGroup = new THREE.Group();
+        scene.add(mapObjectsGroup);
+
         const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8c7853, roughness: 0.4 });
         const halfMap = mapSize / 2;
         function createWall(x, z, width, depth) {
-            const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 3, depth), wallMaterial);
-            wall.position.set(x, 1.5, z);
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 4, depth), wallMaterial);
+            wall.position.set(x, 2, z);
             scene.add(wall);
         }
         createWall(0, -halfMap, mapSize, 2);
@@ -340,28 +344,99 @@
 
         const car = new THREE.Mesh(
             new THREE.BoxGeometry(2, 1, 4),
-            new THREE.MeshStandardMaterial({ color: 0xb8a47e, metalness: 0.5, roughness: 0.3 })
+            new THREE.MeshStandardMaterial({ color: 0xc43030, metalness: 0.4, roughness: 0.3 })
         );
         car.position.y = 0.5;
         scene.add(car);
 
-        // --- MAP SWITCHING FUNCTION ---
-        function changeMap(type) {
-            if (type === 'gridmap') {
-                groundMat.color.setHex(0x3a4a5b);
-                grid.visible = true;
-            } else if (type === 'utah') {
-                groundMat.color.setHex(0xd1b279); // Desert Sand
-                grid.visible = false;
-            } else if (type === 'michigan') {
-                groundMat.color.setHex(0x385c38); // Forest Green
-                grid.visible = false;
-            } else if (type === 'newyork') {
-                groundMat.color.setHex(0x1c1c1c); // Dark asphalt
-                grid.visible = false;
+        // --- MAP BUILDER PROCEDURES ---
+        function clearMapObjects() {
+            while (mapObjectsGroup.children.length > 0) {
+                mapObjectsGroup.remove(mapObjectsGroup.children[0]);
             }
+        }
+
+        function changeMap(type) {
+            clearMapObjects();
+
+            if (type === 'utah') {
+                // Utah Desert Canyons
+                scene.background.setHex(0xb8c9e0); // Warm sky
+                groundMat.color.setHex(0xc28c51);  // Canyon sand
+                grid.visible = false;
+
+                // Canyon Rocks
+                const rockMat = new THREE.MeshStandardMaterial({ color: 0xa65b32, roughness: 0.9 });
+                for (let i = 0; i < 18; i++) {
+                    const rockGeo = new THREE.DodecahedronGeometry(3 + Math.random() * 4, 1);
+                    const rock = new THREE.Mesh(rockGeo, rockMat);
+                    rock.position.set(
+                        (Math.random() - 0.5) * 140,
+                        2,
+                        (Math.random() - 0.5) * 140
+                    );
+                    rock.scale.set(1 + Math.random(), 1.5 + Math.random(), 1 + Math.random());
+                    mapObjectsGroup.add(rock);
+                }
+
+                // Winding Road Surface
+                const roadMat = new THREE.MeshStandardMaterial({ color: 0x5e564d, roughness: 0.7 });
+                const road = new THREE.Mesh(new THREE.PlaneGeometry(30, 160), roadMat);
+                road.rotation.x = -Math.PI / 2;
+                road.position.y = 0.01;
+                mapObjectsGroup.add(road);
+
+            } else if (type === 'gridmap') {
+                // Gridmap Testing Facility
+                scene.background.setHex(0x1a1a20);
+                groundMat.color.setHex(0x2a3644);
+                grid.visible = true;
+
+                // Ramps
+                const rampMat = new THREE.MeshStandardMaterial({ color: 0xff6600, roughness: 0.5 });
+                const rampGeo = new THREE.BoxGeometry(10, 3, 12);
+                const ramp = new THREE.Mesh(rampGeo, rampMat);
+                ramp.position.set(0, 1, -30);
+                ramp.rotation.x = 0.2;
+                mapObjectsGroup.add(ramp);
+
+                // Slalom Obstacles
+                const obstacleMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.4 });
+                for (let i = -3; i <= 3; i++) {
+                    const box = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), obstacleMat);
+                    box.position.set(i * 12, 1.5, 20);
+                    mapObjectsGroup.add(box);
+                }
+
+            } else if (type === 'newyork') {
+                // City Block
+                scene.background.setHex(0x111115);
+                groundMat.color.setHex(0x1f1f24);
+                grid.visible = false;
+
+                // Buildings
+                const buildingMat = new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.6 });
+                for (let x = -60; x <= 60; x += 40) {
+                    for (let z = -60; z <= 60; z += 40) {
+                        if (Math.abs(x) < 20 && Math.abs(z) < 20) continue;
+                        const bGeo = new THREE.BoxGeometry(20, 20 + Math.random() * 30, 20);
+                        const b = new THREE.Mesh(bGeo, buildingMat);
+                        b.position.set(x, bGeo.parameters.height / 2, z);
+                        mapObjectsGroup.add(b);
+                    }
+                }
+            } else {
+                // Standard City Grid
+                scene.background.setHex(0x1a1a1e);
+                groundMat.color.setHex(0x2b2b30);
+                grid.visible = true;
+            }
+
             document.getElementById('map-menu').style.display = 'none';
         }
+
+        // Initialize with Utah map
+        changeMap('utah');
 
         // --- MINIMAP RENDERER ---
         const minimapCanvas = document.getElementById('minimap');
@@ -379,7 +454,7 @@
             const carX = mw / 2 + (car.position.x * scale);
             const carZ = mh / 2 + (car.position.z * scale);
 
-            mCtx.strokeStyle = '#8c7853';
+            mCtx.strokeStyle = '#ff6600';
             mCtx.lineWidth = 2;
             mCtx.beginPath();
             mCtx.arc(mw / 2, mh / 2, (mapSize / 2) * scale - 2, 0, Math.PI * 2);
@@ -417,7 +492,7 @@
             }
         }
 
-        // Input Mapping & Menu Toggles
+        // Controls & Menus
         const keys = { forward: false, brake: false, left: false, right: false, handbrake: false };
 
         window.addEventListener('keydown', (e) => {
@@ -449,7 +524,7 @@
             }
         });
 
-        // Physics Variables
+        // Physics
         let speed = 0;
         let maxSpeed = 0.9;
         let acceleration = 0.012;
