@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Drifting Edition</title>
+    <title>DriveX - Drift Marks Edition</title>
     <style>
         body {
             margin: 0;
@@ -37,9 +37,9 @@
 </head>
 <body>
     <div id="info">
-        <h3 style="margin: 0 0 5px 0;">DriveX - Drifting Edition</h3>
+        <h3 style="margin: 0 0 5px 0;">DriveX - Drift Marks Edition</h3>
         <p style="margin: 3px 0;">Use <b>WASD</b> or <b>Arrow Keys</b> to drive.</p>
-        <p style="margin: 3px 0; color: #ffcc00;"><b>Hold SPACEBAR</b> while turning to Drift!</p>
+        <p style="margin: 3px 0; color: #ffcc00;"><b>Hold SPACEBAR</b> while turning to Drift & leave skid marks!</p>
     </div>
 
     <canvas id="gauge-canvas" width="400" height="400"></canvas>
@@ -215,6 +215,26 @@
         car.position.y = 0.5;
         scene.add(car);
 
+        // --- SKID MARK / DRIFT MARK SYSTEM ---
+        const skidMarks = [];
+        const skidMaterial = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7 });
+        const skidGeo = new THREE.PlaneGeometry(0.3, 0.8);
+
+        function spawnSkidMark(x, z, rotation) {
+            const mark = new THREE.Mesh(skidGeo, skidMaterial.clone());
+            mark.rotation.x = -Math.PI / 2;
+            mark.rotation.z = rotation;
+            mark.position.set(x, 0.02, z); // Just above ground
+            scene.add(mark);
+            skidMarks.push({ mesh: mark, life: 1.0 }); // 1.0 lifespan fading out
+
+            // Limit total skid marks to keep performance high
+            if (skidMarks.length > 300) {
+                const oldMark = skidMarks.shift();
+                scene.remove(oldMark.mesh);
+            }
+        }
+
         // Input Mapping
         const keys = { forward: false, backward: false, left: false, right: false, drift: false };
 
@@ -259,27 +279,28 @@
                 if (speed < 0) speed = Math.min(speed + deceleration, 0);
             }
 
-            // Steering & Drifting Mechanics
+            // Steering & Drifting
             if (Math.abs(speed) > 0.005) {
                 let currentTurn = turnSpeed * (speed / maxSpeed);
-                
-                // If drifting (holding spacebar), increase turn reactivity and slide momentum
                 if (keys.drift) {
                     currentTurn *= 1.8;
                 }
-
                 if (keys.left) carAngle += currentTurn;
                 if (keys.right) carAngle -= currentTurn;
             }
 
-            // Calculate movement vector with drift inertia sliding
             const forwardX = Math.sin(carAngle) * speed;
             const forwardZ = Math.cos(carAngle) * speed;
 
             if (keys.drift && Math.abs(speed) > 0.3) {
-                // Blend forward motion with sideways drift momentum
                 velocityX = velocityX * 0.92 + forwardX * 0.08;
                 velocityZ = velocityZ * 0.92 + forwardZ * 0.08;
+
+                // ** SPAWN DRIFT / SKID MARKS AT REAR WHEELS **
+                const offsetX = Math.cos(carAngle) * 0.8;
+                const offsetZ = Math.sin(carAngle) * 0.8;
+                spawnSkidMark(car.position.x - offsetX, car.position.z - offsetZ, carAngle);
+                spawnSkidMark(car.position.x + offsetX, car.position.z + offsetZ, carAngle);
             } else {
                 velocityX = forwardX;
                 velocityZ = forwardZ;
@@ -288,6 +309,16 @@
             car.rotation.y = carAngle;
             car.position.x += velocityX;
             car.position.z += velocityZ;
+
+            // Fade out older skid marks over time
+            for (let i = skidMarks.length - 1; i >= 0; i--) {
+                skidMarks[i].life -= 0.002;
+                skidMarks[i].mesh.material.opacity = skidMarks[i].life * 0.7;
+                if (skidMarks[i].life <= 0) {
+                    scene.remove(skidMarks[i].mesh);
+                    skidMarks.splice(i, 1);
+                }
+            }
 
             // Boundaries Crash Check
             let crashed = false;
