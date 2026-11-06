@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Phase 1 Prototype</title>
+    <title>DriveX - Phase 1 with Crash Physics</title>
     <style>
         body {
             margin: 0;
@@ -21,14 +21,27 @@
             border-radius: 8px;
             pointer-events: none;
         }
+        #speedometer {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <div id="info">
         <h3>DriveX - Phase 1</h3>
         <p>Use <b>WASD</b> or <b>Arrow Keys</b> to drive.</p>
-        <p><b>Tip:</b> Hold Forward + Left/Right to spin 360 degrees!</p>
+        <p><b>Drive into the outer walls to test crash physics!</b></p>
     </div>
+    <div id="speedometer">Speed: 0 km/h</div>
 
     <!-- Load Three.js from a public library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -52,29 +65,44 @@
         scene.add(directionalLight);
 
         // 3. Create Ground (Road)
-        const groundGeometry = new THREE.PlaneGeometry(200, 200);
+        const mapSize = 180;
+        const groundGeometry = new THREE.PlaneGeometry(mapSize, mapSize);
         const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         scene.add(ground);
 
-        // Add a grid helper to see movement better
-        const grid = new THREE.GridHelper(200, 50, 0x555555, 0x222222);
+        const grid = new THREE.GridHelper(mapSize, 40, 0x555555, 0x222222);
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // 4. Create a Simple Car (Placeholder Box)
+        // 4. Create Crash Walls (Boundaries)
+        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.4 });
+        const wallHeight = 3;
+        const wallThickness = 2;
+        const halfMap = mapSize / 2;
+
+        function createWall(x, z, width, depth) {
+            const wallGeo = new THREE.BoxGeometry(width, wallHeight, depth);
+            const wall = new THREE.Mesh(wallGeo, wallMaterial);
+            wall.position.set(x, wallHeight / 2, z);
+            scene.add(wall);
+        }
+
+        // North, South, East, West Walls
+        createWall(0, -halfMap, mapSize, wallThickness); // North
+        createWall(0, halfMap, mapSize, wallThickness);  // South
+        createWall(-halfMap, 0, wallThickness, mapSize); // West
+        createWall(halfMap, 0, wallThickness, mapSize);  // East
+
+        // 5. Create Car
         const carGeometry = new THREE.BoxGeometry(2, 1, 4);
         const carMaterial = new THREE.MeshStandardMaterial({ color: 0x0077ff, metalness: 0.5, roughness: 0.2 });
         const car = new THREE.Mesh(carGeometry, carMaterial);
         car.position.y = 0.5;
         scene.add(car);
 
-        // Position camera behind the car
-        camera.position.set(0, 5, -10);
-        camera.lookAt(car.position);
-
-        // 5. Input Controls State (Supports WASD and Arrow Keys)
+        // 6. Input Controls State
         const keys = { forward: false, backward: false, left: false, right: false };
 
         window.addEventListener('keydown', (e) => updateKey(e, true));
@@ -89,15 +117,17 @@
             }
         }
 
-        // 6. Car Physics Variables
+        // 7. Car Physics Variables
         let speed = 0;
-        let maxSpeed = 0.6;
+        let maxSpeed = 0.8;
         let acceleration = 0.015;
         let deceleration = 0.008;
         let turnSpeed = 0.04;
         let carAngle = 0;
 
-        // 7. Animation / Game Loop
+        const limit = halfMap - 3; // Collision boundary limit
+
+        // 8. Animation / Game Loop
         function animate() {
             requestAnimationFrame(animate);
 
@@ -107,29 +137,53 @@
             } else if (keys.backward) {
                 speed = Math.max(speed - acceleration, -maxSpeed / 2);
             } else {
-                // Natural slow down
                 if (speed > 0) speed = Math.max(speed - deceleration, 0);
                 if (speed < 0) speed = Math.min(speed + deceleration, 0);
             }
 
-            // Handle Steering (Allows sharp spinning / 360s when moving)
+            // Handle Steering
             if (Math.abs(speed) > 0.005) {
                 let currentTurn = turnSpeed * (speed / maxSpeed);
-                if (keys.left) carAngle += currentTurn * 1.5; // Slightly boosted turn rate for 360 spins
+                if (keys.left) carAngle += currentTurn * 1.5;
                 if (keys.right) carAngle -= currentTurn * 1.5;
             }
 
-            // Update Car Position
+            // Move Car
             car.rotation.y = carAngle;
             car.position.x += Math.sin(carAngle) * speed;
             car.position.z += Math.cos(carAngle) * speed;
 
+            // --- CRASH PHYSICS DETECTION ---
+            let crashed = false;
+            if (car.position.x > limit) {
+                car.position.x = limit;
+                crashed = true;
+            } else if (car.position.x < -limit) {
+                car.position.x = -limit;
+                crashed = true;
+            }
+            if (car.position.z > limit) {
+                car.position.z = limit;
+                crashed = true;
+            } else if (car.position.z < -limit) {
+                car.position.z = -limit;
+                crashed = true;
+            }
+
+            // If a crash happened, bounce back speed heavily
+            if (crashed) {
+                speed = -speed * 0.5; // Reverse and lose energy on impact
+            }
+
+            // Update Speedometer UI
+            document.getElementById('speedometer').innerText = `Speed: ${Math.round(Math.abs(speed) * 120)} km/h`;
+
             // Smooth Camera Follow
-            const targetCameraX = car.position.x - Math.sin(carAngle) * 10;
-            const targetCameraZ = car.position.z - Math.cos(carAngle) * 10;
+            const targetCameraX = car.position.x - Math.sin(carAngle) * 12;
+            const targetCameraZ = car.position.z - Math.cos(carAngle) * 12;
             camera.position.x += (targetCameraX - camera.position.x) * 0.1;
             camera.position.z += (targetCameraZ - camera.position.z) * 0.1;
-            camera.position.y = car.position.y + 4;
+            camera.position.y = car.position.y + 5;
             
             camera.lookAt(car.position.x, car.position.y + 1, car.position.z);
 
