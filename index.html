@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Fixed Coasting</title>
+    <title>DriveX - Features Edition</title>
     <style>
         body {
             margin: 0;
@@ -21,6 +21,7 @@
             border-radius: 8px;
             border: 2px solid #b8a47e;
             pointer-events: none;
+            z-index: 10;
         }
         
         #gauge-canvas {
@@ -32,17 +33,93 @@
             border-radius: 50%;
             box-shadow: 0 10px 25px rgba(0,0,0,0.8);
             pointer-events: none;
+            z-index: 10;
+        }
+
+        /* MINI-MAP CANVAS */
+        #minimap {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 150px;
+            height: 150px;
+            background: rgba(20, 20, 25, 0.9);
+            border: 2px solid #8c7853;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* POPUP MENUS (T & E) */
+        .modal-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(18, 18, 22, 0.95);
+            border: 3px solid #b8a47e;
+            padding: 25px 35px;
+            border-radius: 12px;
+            color: #f4eee2;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
+            display: none;
+            z-index: 100;
+            font-family: 'Times New Roman', Times, serif;
+            min-width: 280px;
+        }
+        .modal-menu h2 {
+            margin-top: 0;
+            color: #e5d8b5;
+            letter-spacing: 1px;
+        }
+        .modal-menu p {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .map-option {
+            background: #2b2b30;
+            border: 1px solid #8c7853;
+            color: #f4eee2;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .map-option:hover {
+            background: #8c7853;
+            color: #111;
         }
     </style>
 </head>
 <body>
     <div id="info">
-        <h3 style="margin: 0 0 5px 0;">DriveX - Fixed Coasting</h3>
-        <p style="margin: 3px 0;">Use <b>W / Up</b> to Accelerate, <b>S / Down</b> to Brake/Reverse.</p>
-        <p style="margin: 3px 0; color: #ffcc00;"><b>Hold SPACEBAR</b> while turning to Drift!</p>
+        <h3 style="margin: 0 0 5px 0;">DriveX - Feature Edition</h3>
+        <p style="margin: 3px 0;"><b>W/S</b> Drive | <b>A/D</b> Steer | <b>Space</b> Handbrake</p>
+        <p style="margin: 3px 0; color: #ffcc00;"><b>T</b>: Survival Chance | <b>E</b>: Change Map</p>
     </div>
 
     <canvas id="gauge-canvas" width="400" height="400"></canvas>
+    <canvas id="minimap" width="200" height="200"></canvas>
+
+    <!-- T KEY MENU: SURVIVAL CHANCE -->
+    <div id="survival-menu" class="modal-menu">
+        <h2>SURVIVAL CHANCE</h2>
+        <p>Current Speed Risk: <span id="risk-text" style="color: #00ffcc; font-weight: bold;">SAFE</span></p>
+        <p style="font-size: 13px; color: #aaa;">Based on current velocity, obstacle proximity, and structural integrity.</p>
+        <p style="font-size: 11px; color: #8c7853; margin-top: 15px;">Press [ T ] to close</p>
+    </div>
+
+    <!-- E KEY MENU: CHANGE MAP -->
+    <div id="map-menu" class="modal-menu">
+        <h2>SELECT MAP</h2>
+        <div class="map-option" onclick="changeMap('city')">City Grid (Standard)</div>
+        <div class="map-option" onclick="changeMap('desert')">Desert Dunes (Sandy)</div>
+        <div class="map-option" onclick="changeMap('airport')">Airport Runway (Open Asphalt)</div>
+        <p style="font-size: 11px; color: #8c7853; margin-top: 15px;">Press [ E ] to close</p>
+    </div>
 
     <!-- Three.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -175,11 +252,11 @@
         directionalLight.position.set(10, 20, 10);
         scene.add(directionalLight);
 
+        // Ground & Map Material setup
         const mapSize = 180;
-        const ground = new THREE.Mesh(
-            new THREE.PlaneGeometry(mapSize, mapSize),
-            new THREE.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.8 })
-        );
+        const groundGeo = new THREE.PlaneGeometry(mapSize, mapSize);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.8 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
         scene.add(ground);
 
@@ -189,10 +266,12 @@
 
         const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8c7853, roughness: 0.4 });
         const halfMap = mapSize / 2;
+        const walls = [];
         function createWall(x, z, width, depth) {
             const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 3, depth), wallMaterial);
             wall.position.set(x, 1.5, z);
             scene.add(wall);
+            walls.push(wall);
         }
         createWall(0, -halfMap, mapSize, 2);
         createWall(0, halfMap, mapSize, 2);
@@ -205,6 +284,60 @@
         );
         car.position.y = 0.5;
         scene.add(car);
+
+        // --- MAP SWITCHING FUNCTION ---
+        function changeMap(type) {
+            if (type === 'city') {
+                groundMat.color.setHex(0x2b2b30);
+                grid.visible = true;
+            } else if (type === 'desert') {
+                groundMat.color.setHex(0xd1b279); // Sandy tan
+                grid.visible = false;
+            } else if (type === 'airport') {
+                groundMat.color.setHex(0x1a1a1a); // Dark tarmac
+                grid.visible = false;
+            }
+            document.getElementById('map-menu').style.display = 'none';
+        }
+
+        // --- MINIMAP RENDERER ---
+        const minimapCanvas = document.getElementById('minimap');
+        const mCtx = minimapCanvas.getContext('2d');
+
+        function renderMinimap() {
+            const mw = minimapCanvas.width;
+            const mh = minimapCanvas.height;
+            mCtx.clearRect(0, 0, mw, mh);
+
+            // Background
+            mCtx.fillStyle = 'rgba(20, 20, 25, 0.9)';
+            mCtx.fillRect(0, 0, mw, mh);
+
+            // Scale factor mapping game world (-90 to +90) to minimap (0 to 200)
+            const scale = mw / mapSize;
+            const carX = mw / 2 + (car.position.x * scale);
+            const carZ = mh / 2 + (car.position.z * scale);
+
+            // Draw Boundary ring
+            mCtx.strokeStyle = '#8c7853';
+            mCtx.lineWidth = 2;
+            mCtx.beginPath();
+            mCtx.arc(mw / 2, mh / 2, (mapSize / 2) * scale, 0, Math.PI * 2);
+            mCtx.stroke();
+
+            // Draw Car Marker
+            mCtx.save();
+            mCtx.translate(carX, carZ);
+            mCtx.rotate(-carAngle);
+            mCtx.fillStyle = '#ffcc00';
+            mCtx.beginPath();
+            mCtx.moveTo(0, -6);
+            mCtx.lineTo(4, 6);
+            mCtx.lineTo(-4, 6);
+            mCtx.closePath();
+            mCtx.fill();
+            mCtx.restore();
+        }
 
         // --- SKID MARK SYSTEM ---
         const skidMarks = [];
@@ -225,21 +358,37 @@
             }
         }
 
-        // Input Mapping
+        // Input Mapping & Menu Toggles
         const keys = { forward: false, brake: false, left: false, right: false, handbrake: false };
 
-        window.addEventListener('keydown', (e) => updateKey(e, true));
-        window.addEventListener('keyup', (e) => updateKey(e, false));
-
-        function updateKey(e, isDown) {
-            if (e.code === 'Space') { keys.handbrake = isDown; e.preventDefault(); return; }
-            switch(e.key.toLowerCase()) {
-                case 'w': case 'arrowup': keys.forward = isDown; break;
-                case 's': case 'arrowdown': keys.brake = isDown; break;
-                case 'a': case 'arrowleft': keys.left = isDown; break;
-                case 'd': case 'arrowright': keys.right = isDown; break;
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') { keys.handbrake = true; e.preventDefault(); return; }
+            if (e.key.toLowerCase() === 't') {
+                const menu = document.getElementById('survival-menu');
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             }
-        }
+            if (e.key.toLowerCase() === 'e') {
+                const menu = document.getElementById('map-menu');
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            }
+
+            switch(e.key.toLowerCase()) {
+                case 'w': case 'arrowup': keys.forward = true; break;
+                case 's': case 'arrowdown': keys.brake = true; break;
+                case 'a': case 'arrowleft': keys.left = true; break;
+                case 'd': case 'arrowright': keys.right = true; break;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') { keys.handbrake = false; return; }
+            switch(e.key.toLowerCase()) {
+                case 'w': case 'arrowup': keys.forward = false; break;
+                case 's': case 'arrowdown': keys.brake = false; break;
+                case 'a': case 'arrowleft': keys.left = false; break;
+                case 'd': case 'arrowright': keys.right = false; break;
+            }
+        });
 
         // Physics & Tuning Variables
         let speed = 0;
@@ -247,7 +396,7 @@
         let acceleration = 0.012;
         let brakeForce = 0.02;
         let handbrakeFriction = 0.006;
-        let naturalDecel = 0.006;    // Clean coasting slowdown
+        let naturalDecel = 0.006;
         let turnSpeed = 0.032;
         let carAngle = 0;
         let velocityX = 0;
@@ -261,7 +410,6 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // Clean Acceleration & Braking Logic
             if (keys.handbrake) {
                 if (speed > 0) speed = Math.max(speed - handbrakeFriction, 0);
                 if (speed < 0) speed = Math.min(speed + handbrakeFriction, 0);
@@ -274,7 +422,6 @@
             } else if (keys.forward) {
                 speed = Math.min(speed + acceleration, maxSpeed);
             } else {
-                // Natural coasting to a complete stop when keys are released
                 if (speed > 0) {
                     speed = Math.max(speed - naturalDecel, 0);
                 } else if (speed < 0) {
@@ -282,7 +429,6 @@
                 }
             }
 
-            // Steering
             if (Math.abs(speed) > 0.005) {
                 let currentTurn = turnSpeed * (Math.abs(speed) / maxSpeed);
                 if (keys.handbrake) currentTurn *= 1.3;
@@ -293,7 +439,6 @@
             const forwardX = Math.sin(carAngle) * speed;
             const forwardZ = Math.cos(carAngle) * speed;
 
-            // Momentum blending
             if (keys.handbrake && Math.abs(speed) > 0.2) {
                 velocityX = velocityX * 0.95 + forwardX * 0.05;
                 velocityZ = velocityZ * 0.95 + forwardZ * 0.05;
@@ -302,7 +447,6 @@
                 velocityZ = velocityZ * 0.75 + forwardZ * 0.25;
             }
 
-            // Spawn Skid Marks
             if ((keys.handbrake || keys.brake) && Math.abs(speed) > 0.25) {
                 const rearOffsetX = Math.sin(carAngle) * -1.5;
                 const rearOffsetZ = Math.cos(carAngle) * -1.5;
@@ -320,7 +464,6 @@
             car.position.x += velocityX;
             car.position.z += velocityZ;
 
-            // Fade skid marks
             for (let i = skidMarks.length - 1; i >= 0; i--) {
                 skidMarks[i].life -= 0.0015; 
                 skidMarks[i].mesh.material.opacity = skidMarks[i].life * 0.85;
@@ -330,7 +473,6 @@
                 }
             }
 
-            // Crash Boundaries
             let crashed = false;
             if (car.position.x > limit) { car.position.x = limit; crashed = true; }
             if (car.position.x < -limit) { car.position.x = -limit; crashed = true; }
@@ -343,7 +485,6 @@
                 velocityZ = 0;
             }
 
-            // Speed & Gear
             const kmh = Math.round(Math.abs(speed) * 300);
             let gear = "P";
             if (Math.abs(speed) < 0.01) gear = "P";
@@ -357,8 +498,21 @@
             }
 
             drawGauge(kmh, gear);
+            renderMinimap();
 
-            // Camera follow
+            // Update Survival Chance Text dynamically
+            const riskText = document.getElementById('risk-text');
+            if (kmh > 200) {
+                riskText.innerText = "CRITICAL";
+                riskText.style.color = "#ff3300";
+            } else if (kmh > 100) {
+                riskText.innerText = "MODERATE";
+                riskText.style.color = "#ffcc00";
+            } else {
+                riskText.innerText = "SAFE";
+                riskText.style.color = "#00ffcc";
+            }
+
             const targetCameraX = car.position.x - Math.sin(carAngle) * 12;
             const targetCameraZ = car.position.z - Math.cos(carAngle) * 12;
             camera.position.x += (targetCameraX - camera.position.x) * 0.1;
