@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Features Edition</title>
+    <title>DriveX - Fixed Minimap</title>
     <style>
         body {
             margin: 0;
@@ -13,8 +13,8 @@
         }
         #info {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 15px;
+            left: 15px;
             color: #d4c39e;
             background: rgba(20,20,20,0.85);
             padding: 12px 18px;
@@ -36,13 +36,13 @@
             z-index: 10;
         }
 
-        /* MINI-MAP CANVAS */
+        /* FIXED MINI-MAP POSITIONING */
         #minimap {
             position: absolute;
             top: 15px;
             right: 15px;
-            width: 150px;
-            height: 150px;
+            width: 140px;
+            height: 140px;
             background: rgba(20, 20, 25, 0.9);
             border: 2px solid #8c7853;
             border-radius: 50%;
@@ -252,7 +252,6 @@
         directionalLight.position.set(10, 20, 10);
         scene.add(directionalLight);
 
-        // Ground & Map Material setup
         const mapSize = 180;
         const groundGeo = new THREE.PlaneGeometry(mapSize, mapSize);
         const groundMat = new THREE.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.8 });
@@ -266,12 +265,10 @@
 
         const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8c7853, roughness: 0.4 });
         const halfMap = mapSize / 2;
-        const walls = [];
         function createWall(x, z, width, depth) {
             const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 3, depth), wallMaterial);
             wall.position.set(x, 1.5, z);
             scene.add(wall);
-            walls.push(wall);
         }
         createWall(0, -halfMap, mapSize, 2);
         createWall(0, halfMap, mapSize, 2);
@@ -291,10 +288,10 @@
                 groundMat.color.setHex(0x2b2b30);
                 grid.visible = true;
             } else if (type === 'desert') {
-                groundMat.color.setHex(0xd1b279); // Sandy tan
+                groundMat.color.setHex(0xd1b279);
                 grid.visible = false;
             } else if (type === 'airport') {
-                groundMat.color.setHex(0x1a1a1a); // Dark tarmac
+                groundMat.color.setHex(0x1a1a1a);
                 grid.visible = false;
             }
             document.getElementById('map-menu').style.display = 'none';
@@ -309,23 +306,19 @@
             const mh = minimapCanvas.height;
             mCtx.clearRect(0, 0, mw, mh);
 
-            // Background
             mCtx.fillStyle = 'rgba(20, 20, 25, 0.9)';
             mCtx.fillRect(0, 0, mw, mh);
 
-            // Scale factor mapping game world (-90 to +90) to minimap (0 to 200)
             const scale = mw / mapSize;
             const carX = mw / 2 + (car.position.x * scale);
             const carZ = mh / 2 + (car.position.z * scale);
 
-            // Draw Boundary ring
             mCtx.strokeStyle = '#8c7853';
             mCtx.lineWidth = 2;
             mCtx.beginPath();
-            mCtx.arc(mw / 2, mh / 2, (mapSize / 2) * scale, 0, Math.PI * 2);
+            mCtx.arc(mw / 2, mh / 2, (mapSize / 2) * scale - 2, 0, Math.PI * 2);
             mCtx.stroke();
 
-            // Draw Car Marker
             mCtx.save();
             mCtx.translate(carX, carZ);
             mCtx.rotate(-carAngle);
@@ -500,7 +493,6 @@
             drawGauge(kmh, gear);
             renderMinimap();
 
-            // Update Survival Chance Text dynamically
             const riskText = document.getElementById('risk-text');
             if (kmh > 200) {
                 riskText.innerText = "CRITICAL";
@@ -526,6 +518,7 @@
 
         animate();
 
+        window.innerWidth = window.innerWidth;
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
