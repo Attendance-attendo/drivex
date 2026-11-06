@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Fixed Antique Gauge</title>
+    <title>DriveX - Canvas Antique Gauge</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background-color: #111;
-            font-family: 'Times New Roman', Times, serif;
+            font-family: sans-serif;
         }
         #info {
             position: absolute;
@@ -21,170 +21,160 @@
             border-radius: 8px;
             border: 2px solid #b8a47e;
             pointer-events: none;
-            font-family: sans-serif;
         }
         
-        /* GAUGE CONTAINER */
-        #retro-gauge {
+        /* GAUGE CANVAS POSITIONING */
+        #gauge-canvas {
             position: absolute;
             bottom: 25px;
             right: 25px;
             width: 220px;
             height: 220px;
-            background: radial-gradient(circle, #f4eee2 60%, #dcd2be 100%);
-            border: 8px solid;
-            border-color: #e5d8b5 #a6936d #6b5c3f #c8b793;
             border-radius: 50%;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.8), inset 0 0 25px rgba(70,55,30,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
             pointer-events: none;
-        }
-
-        /* DIAL LABELS & TEXT */
-        .dial-number {
-            position: absolute;
-            font-size: 11px;
-            font-weight: bold;
-            color: #2b2b2b;
-            font-family: 'Courier New', Courier, monospace;
-            width: 25px;
-            text-align: center;
-        }
-
-        #dial-brand {
-            position: absolute;
-            top: 52px;
-            font-size: 7px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            color: #3a3325;
-            text-align: center;
-            width: 100%;
-        }
-
-        #dial-subtext {
-            position: absolute;
-            bottom: 52px;
-            font-size: 8px;
-            font-weight: bold;
-            letter-spacing: 1.5px;
-            color: #3a3325;
-            text-align: center;
-            width: 100%;
-        }
-
-        /* DIGITAL GEAR DISPLAY */
-        #gear-box {
-            position: absolute;
-            top: 72px;
-            background: rgba(0,0,0,0.06);
-            border: 1px solid rgba(0,0,0,0.2);
-            padding: 0px 6px;
-            border-radius: 4px;
-        }
-        #gear-indicator {
-            font-size: 14px;
-            font-weight: bold;
-            color: #a02020;
-            font-family: monospace;
-        }
-
-        /* ANALOG NEEDLE (Anchored at Center) */
-        #needle-container {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transform: rotate(-135deg);
-            transition: transform 0.05s linear;
-        }
-
-        #needle {
-            position: absolute;
-            width: 3px;
-            height: 70px;
-            background: #1a1a1a;
-            bottom: 50%;
-            border-radius: 2px 2px 0 0;
-        }
-
-        #needle-hub {
-            position: absolute;
-            width: 14px;
-            height: 14px;
-            background: radial-gradient(circle, #555 30%, #111 100%);
-            border: 1px solid #888;
-            border-radius: 50%;
-            z-index: 10;
-        }
-
-        #digital-speed {
-            position: absolute;
-            bottom: 32px;
-            font-size: 11px;
-            font-weight: bold;
-            color: #444;
-            font-family: monospace;
-            text-align: center;
-            width: 100%;
         }
     </style>
 </head>
 <body>
     <div id="info">
-        <h3 style="margin: 0 0 5px 0;">DriveX - Antique Edition</h3>
+        <h3 style="margin: 0 0 5px 0;">DriveX - Canvas Gauge</h3>
         <p style="margin: 3px 0;">Use <b>WASD</b> or <b>Arrow Keys</b> to drive.</p>
     </div>
 
-    <!-- ANTIQUE GAUGE -->
-    <div id="retro-gauge">
-        <div id="dial-brand">BETHLEHEM STEEL CO.</div>
-        <div id="gear-box"><span id="gear-indicator">P</span></div>
-        <div id="dial-subtext">COMPRESSED AIR</div>
-        
-        <!-- Rotating Needle Container -->
-        <div id="needle-container">
-            <div id="needle"></div>
-        </div>
-        <div id="needle-hub"></div>
-        
-        <div id="digital-speed">0 KM/H</div>
-    </div>
+    <!-- CANVAS RETRO GAUGE -->
+    <canvas id="gauge-canvas" width="400" height="400"></canvas>
 
     <!-- Three.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // Generate Dial Numbers cleanly in a full circle arc (-135deg to +135deg)
-        const gaugeContainer = document.getElementById('retro-gauge');
-        const radius = 75; // Distance from center
-        const centerX = 110;
-        const centerY = 110;
+        // -----------------------------------------------------------
+        // 1. CANVAS ANTIQUE GAUGE RENDERER
+        // -----------------------------------------------------------
+        const canvas = document.getElementById('gauge-canvas');
+        const ctx = canvas.getContext('2d');
 
-        for (let i = 0; i <= 12; i++) {
-            const val = i * 25; // 0 to 300
-            // Map 0-12 steps to -135deg to +135deg (270 degree total sweep)
-            const angleDeg = -135 + (i / 12) * 270;
-            const angleRad = (angleDeg - 90) * (Math.PI / 180);
+        function drawGauge(kmh, gear) {
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+            const radius = 180;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // A. Outer Brass Bezel
+            const gradBezel = ctx.createRadialGradient(cx, cy, radius - 15, cx, cy, radius);
+            gradBezel.addColorStop(0, '#e5d8b5');
+            gradBezel.addColorStop(0.5, '#a6936d');
+            gradBezel.addColorStop(1, '#4a3e28');
             
-            const x = centerX + radius * Math.cos(angleRad) - 12;
-            const y = centerY + radius * Math.sin(angleRad) - 8;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fillStyle = gradBezel;
+            ctx.fill();
+
+            // B. Parchment Dial Face
+            const gradFace = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius - 15);
+            gradFace.addColorStop(0, '#f8f4eb');
+            gradFace.addColorStop(0.85, '#eee5d3');
+            gradFace.addColorStop(1, '#d8cbaf');
             
-            const numDiv = document.createElement('div');
-            numDiv.className = 'dial-number';
-            numDiv.style.left = `${x}px`;
-            numDiv.style.top = `${y}px`;
-            numDiv.innerText = val;
-            gaugeContainer.appendChild(numDiv);
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius - 15, 0, Math.PI * 2);
+            ctx.fillStyle = gradFace;
+            ctx.fill();
+
+            // C. Brand Text
+            ctx.fillStyle = '#3a3325';
+            ctx.font = 'bold 13px "Times New Roman"';
+            ctx.textAlign = 'center';
+            ctx.fillText('BETHLEHEM STEEL CO.', cx, cy - 85);
+
+            ctx.font = 'bold 12px "Times New Roman"';
+            ctx.fillText('COMPRESSED AIR', cx, cy + 95);
+
+            // D. Gear Box
+            ctx.fillStyle = 'rgba(0,0,0,0.06)';
+            ctx.fillRect(cx - 16, cy - 65, 32, 26);
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(cx - 16, cy - 65, 32, 26);
+
+            ctx.fillStyle = '#a02020';
+            ctx.font = 'bold 20px monospace';
+            ctx.fillText(gear, cx, cy - 45);
+
+            // E. Digital Speed Text
+            ctx.fillStyle = '#444';
+            ctx.font = 'bold 16px monospace';
+            ctx.fillText(`${kmh} KM/H`, cx, cy + 125);
+
+            // F. Ticks and Numbers (-135 deg to +135 deg sweep)
+            const minAngle = -135 * (Math.PI / 180);
+            const maxAngle = 135 * (Math.PI / 180);
+            const totalSteps = 12; // 0 to 300 step 25
+
+            for (let i = 0; i <= totalSteps; i++) {
+                const angle = minAngle + (i / totalSteps) * (maxAngle - minAngle) - (Math.PI / 2);
+                
+                // Tick mark
+                const innerR = radius - 30;
+                const outerR = radius - 18;
+                const x1 = cx + innerR * Math.cos(angle);
+                const y1 = cy + innerR * Math.sin(angle);
+                const x2 = cx + outerR * Math.cos(angle);
+                const y2 = cy + outerR * Math.sin(angle);
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Numbers
+                const numR = radius - 48;
+                const nx = cx + numR * Math.cos(angle);
+                const ny = cy + numR * Math.sin(angle) + 5;
+                ctx.fillStyle = '#111';
+                ctx.font = 'bold 17px "Courier New"';
+                ctx.fillText(i * 25, nx, ny);
+            }
+
+            // G. Needle
+            const speedClamped = Math.min(kmh, 300);
+            const needleAngle = minAngle + (speedClamped / 300) * (maxAngle - minAngle) - (Math.PI / 2);
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(needleAngle + Math.PI / 2);
+
+            ctx.beginPath();
+            ctx.moveTo(-3, 15);
+            ctx.lineTo(3, 15);
+            ctx.lineTo(1, -135);
+            ctx.lineTo(-1, -135);
+            ctx.closePath();
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fill();
+
+            ctx.restore();
+
+            // H. Center Needle Hub
+            ctx.beginPath();
+            ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+            ctx.fillStyle = '#333';
+            ctx.fill();
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            ctx.stroke();
         }
 
-        // 1. Scene & Camera Setup
+        // -----------------------------------------------------------
+        // 2. THREE.JS GAME SCENE
+        // -----------------------------------------------------------
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x1a1a1e);
 
@@ -193,7 +183,6 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 2. Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
 
@@ -201,7 +190,6 @@
         directionalLight.position.set(10, 20, 10);
         scene.add(directionalLight);
 
-        // 3. Ground & Grid
         const mapSize = 180;
         const groundGeometry = new THREE.PlaneGeometry(mapSize, mapSize);
         const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.8 });
@@ -213,7 +201,6 @@
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // 4. Boundary Crash Walls
         const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8c7853, roughness: 0.4 });
         const wallHeight = 3;
         const wallThickness = 2;
@@ -231,14 +218,12 @@
         createWall(-halfMap, 0, wallThickness, mapSize);
         createWall(halfMap, 0, wallThickness, mapSize);
 
-        // 5. Car Body
         const carGeometry = new THREE.BoxGeometry(2, 1, 4);
         const carMaterial = new THREE.MeshStandardMaterial({ color: 0xb8a47e, metalness: 0.5, roughness: 0.3 });
         const car = new THREE.Mesh(carGeometry, carMaterial);
         car.position.y = 0.5;
         scene.add(car);
 
-        // 6. Keyboard State
         const keys = { forward: false, backward: false, left: false, right: false };
 
         window.addEventListener('keydown', (e) => updateKey(e, true));
@@ -253,7 +238,6 @@
             }
         }
 
-        // 7. Physics & Drive Variables
         let speed = 0;
         let maxSpeed = 0.9;
         let acceleration = 0.015;
@@ -263,12 +247,9 @@
 
         const limit = halfMap - 3;
 
-        // DOM References
-        const needleContainer = document.getElementById('needle-container');
-        const digitalSpeed = document.getElementById('digital-speed');
-        const gearIndicator = document.getElementById('gear-indicator');
-
-        // 8. Game Loop
+        // -----------------------------------------------------------
+        // 3. ANIMATION LOOP
+        // -----------------------------------------------------------
         function animate() {
             requestAnimationFrame(animate);
 
@@ -301,28 +282,23 @@
                 speed = -speed * 0.5;
             }
 
-            // --- GAUGE UPDATES ---
+            // Speed & Gear calculation
             const kmh = Math.round(Math.abs(speed) * 300);
-            digitalSpeed.innerText = `${kmh} KM/H`;
-
-            // Needle angle mapping: -135deg (0 km/h) to +135deg (300 km/h)
-            const needleAngle = -135 + (Math.min(kmh, 300) / 300) * 270;
-            needleContainer.style.transform = `rotate(${needleAngle}deg)`;
-
-            // Gear Shift Logic
-            if (Math.abs(speed) < 0.01) {
-                gearIndicator.innerText = "P";
-            } else if (speed < 0) {
-                gearIndicator.innerText = "R";
-            } else {
-                if (kmh < 60) gearIndicator.innerText = "1";
-                else if (kmh < 120) gearIndicator.innerText = "2";
-                else if (kmh < 180) gearIndicator.innerText = "3";
-                else if (kmh < 240) gearIndicator.innerText = "4";
-                else gearIndicator.innerText = "5";
+            let gear = "P";
+            if (Math.abs(speed) < 0.01) gear = "P";
+            else if (speed < 0) gear = "R";
+            else {
+                if (kmh < 60) gear = "1";
+                else if (kmh < 120) gear = "2";
+                else if (kmh < 180) gear = "3";
+                else if (kmh < 240) gear = "4";
+                else gear = "5";
             }
 
-            // Smooth Camera Follow
+            // Render Canvas Gauge
+            drawGauge(kmh, gear);
+
+            // Camera follow
             const targetCameraX = car.position.x - Math.sin(carAngle) * 12;
             const targetCameraZ = car.position.z - Math.cos(carAngle) * 12;
             camera.position.x += (targetCameraX - camera.position.x) * 0.1;
