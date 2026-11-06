@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Drift Marks Edition</title>
+    <title>DriveX - Fixed Brake Physics</title>
     <style>
         body {
             margin: 0;
@@ -37,9 +37,9 @@
 </head>
 <body>
     <div id="info">
-        <h3 style="margin: 0 0 5px 0;">DriveX - Drift Marks Edition</h3>
-        <p style="margin: 3px 0;">Use <b>WASD</b> or <b>Arrow Keys</b> to drive.</p>
-        <p style="margin: 3px 0; color: #ffcc00;"><b>Hold SPACEBAR</b> while turning to Drift & leave skid marks!</p>
+        <h3 style="margin: 0 0 5px 0;">DriveX - Fixed Brake Physics</h3>
+        <p style="margin: 3px 0;">Use <b>W</b> / <b>Up</b> to Accelerate, <b>S</b> / <b>Down</b> to Brake/Reverse.</p>
+        <p style="margin: 3px 0; color: #ffcc00;"><b>Hold SPACEBAR</b> to engage Handbrake for Drifting!</p>
     </div>
 
     <canvas id="gauge-canvas" width="400" height="400"></canvas>
@@ -63,7 +63,6 @@
 
             ctx.clearRect(0, 0, w, h);
 
-            // Bezel
             const gradBezel = ctx.createRadialGradient(cx, cy, radius - 15, cx, cy, radius);
             gradBezel.addColorStop(0, '#e5d8b5');
             gradBezel.addColorStop(0.5, '#a6936d');
@@ -74,7 +73,6 @@
             ctx.fillStyle = gradBezel;
             ctx.fill();
 
-            // Face
             const gradFace = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius - 15);
             gradFace.addColorStop(0, '#f8f4eb');
             gradFace.addColorStop(0.85, '#eee5d3');
@@ -85,16 +83,13 @@
             ctx.fillStyle = gradFace;
             ctx.fill();
 
-            // Text
             ctx.fillStyle = '#3a3325';
             ctx.font = 'bold 13px "Times New Roman"';
             ctx.textAlign = 'center';
             ctx.fillText('BETHLEHEM STEEL CO.', cx, cy - 85);
-
             ctx.font = 'bold 12px "Times New Roman"';
             ctx.fillText('COMPRESSED AIR', cx, cy + 95);
 
-            // Gear Box
             ctx.fillStyle = 'rgba(0,0,0,0.06)';
             ctx.fillRect(cx - 16, cy - 65, 32, 26);
             ctx.strokeStyle = 'rgba(0,0,0,0.2)';
@@ -105,12 +100,10 @@
             ctx.font = 'bold 20px monospace';
             ctx.fillText(gear, cx, cy - 45);
 
-            // Speed Text
             ctx.fillStyle = '#444';
             ctx.font = 'bold 16px monospace';
             ctx.fillText(`${kmh} KM/H`, cx, cy + 125);
 
-            // Ticks & Numbers
             const minAngle = -135 * (Math.PI / 180);
             const maxAngle = 135 * (Math.PI / 180);
             const totalSteps = 12;
@@ -140,7 +133,6 @@
                 ctx.fillText(i * 25, nx, ny);
             }
 
-            // Needle
             const speedClamped = Math.min(kmh, 300);
             const needleAngle = minAngle + (speedClamped / 300) * (maxAngle - minAngle) - (Math.PI / 2);
             
@@ -158,7 +150,6 @@
             ctx.fill();
             ctx.restore();
 
-            // Hub
             ctx.beginPath();
             ctx.arc(cx, cy, 14, 0, Math.PI * 2);
             ctx.fillStyle = '#333';
@@ -215,158 +206,10 @@
         car.position.y = 0.5;
         scene.add(car);
 
-        // --- SKID MARK / DRIFT MARK SYSTEM ---
+        // --- SKID MARK SYSTEM ---
         const skidMarks = [];
-        const skidMaterial = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7 });
-        const skidGeo = new THREE.PlaneGeometry(0.3, 0.8);
+        const skidMaterial = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.85 });
+        const skidGeo = new THREE.PlaneGeometry(0.35, 0.5);
 
         function spawnSkidMark(x, z, rotation) {
             const mark = new THREE.Mesh(skidGeo, skidMaterial.clone());
-            mark.rotation.x = -Math.PI / 2;
-            mark.rotation.z = rotation;
-            mark.position.set(x, 0.02, z); // Just above ground
-            scene.add(mark);
-            skidMarks.push({ mesh: mark, life: 1.0 }); // 1.0 lifespan fading out
-
-            // Limit total skid marks to keep performance high
-            if (skidMarks.length > 300) {
-                const oldMark = skidMarks.shift();
-                scene.remove(oldMark.mesh);
-            }
-        }
-
-        // Input Mapping
-        const keys = { forward: false, backward: false, left: false, right: false, drift: false };
-
-        window.addEventListener('keydown', (e) => updateKey(e, true));
-        window.addEventListener('keyup', (e) => updateKey(e, false));
-
-        function updateKey(e, isDown) {
-            if (e.code === 'Space') { keys.drift = isDown; e.preventDefault(); return; }
-            switch(e.key.toLowerCase()) {
-                case 'w': case 'arrowup': keys.forward = isDown; break;
-                case 's': case 'arrowdown': keys.backward = isDown; break;
-                case 'a': case 'arrowleft': keys.left = isDown; break;
-                case 'd': case 'arrowright': keys.right = isDown; break;
-            }
-        }
-
-        // Physics & Drift Variables
-        let speed = 0;
-        let maxSpeed = 0.9;
-        let acceleration = 0.015;
-        let deceleration = 0.008;
-        let turnSpeed = 0.04;
-        let carAngle = 0;
-        let velocityX = 0;
-        let velocityZ = 0;
-
-        const limit = halfMap - 3;
-
-        // -----------------------------------------------------------
-        // 3. ANIMATION LOOP
-        // -----------------------------------------------------------
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Acceleration
-            if (keys.forward) {
-                speed = Math.min(speed + acceleration, maxSpeed);
-            } else if (keys.backward) {
-                speed = Math.max(speed - acceleration, -maxSpeed / 2);
-            } else {
-                if (speed > 0) speed = Math.max(speed - deceleration, 0);
-                if (speed < 0) speed = Math.min(speed + deceleration, 0);
-            }
-
-            // Steering & Drifting
-            if (Math.abs(speed) > 0.005) {
-                let currentTurn = turnSpeed * (speed / maxSpeed);
-                if (keys.drift) {
-                    currentTurn *= 1.8;
-                }
-                if (keys.left) carAngle += currentTurn;
-                if (keys.right) carAngle -= currentTurn;
-            }
-
-            const forwardX = Math.sin(carAngle) * speed;
-            const forwardZ = Math.cos(carAngle) * speed;
-
-            if (keys.drift && Math.abs(speed) > 0.3) {
-                velocityX = velocityX * 0.92 + forwardX * 0.08;
-                velocityZ = velocityZ * 0.92 + forwardZ * 0.08;
-
-                // ** SPAWN DRIFT / SKID MARKS AT REAR WHEELS **
-                const offsetX = Math.cos(carAngle) * 0.8;
-                const offsetZ = Math.sin(carAngle) * 0.8;
-                spawnSkidMark(car.position.x - offsetX, car.position.z - offsetZ, carAngle);
-                spawnSkidMark(car.position.x + offsetX, car.position.z + offsetZ, carAngle);
-            } else {
-                velocityX = forwardX;
-                velocityZ = forwardZ;
-            }
-
-            car.rotation.y = carAngle;
-            car.position.x += velocityX;
-            car.position.z += velocityZ;
-
-            // Fade out older skid marks over time
-            for (let i = skidMarks.length - 1; i >= 0; i--) {
-                skidMarks[i].life -= 0.002;
-                skidMarks[i].mesh.material.opacity = skidMarks[i].life * 0.7;
-                if (skidMarks[i].life <= 0) {
-                    scene.remove(skidMarks[i].mesh);
-                    skidMarks.splice(i, 1);
-                }
-            }
-
-            // Boundaries Crash Check
-            let crashed = false;
-            if (car.position.x > limit) { car.position.x = limit; crashed = true; }
-            if (car.position.x < -limit) { car.position.x = -limit; crashed = true; }
-            if (car.position.z > limit) { car.position.z = limit; crashed = true; }
-            if (car.position.z < -limit) { car.position.z = -limit; crashed = true; }
-
-            if (crashed) {
-                speed = -speed * 0.4;
-                velocityX = 0;
-                velocityZ = 0;
-            }
-
-            // Speed & Gear
-            const kmh = Math.round(Math.abs(speed) * 300);
-            let gear = "P";
-            if (Math.abs(speed) < 0.01) gear = "P";
-            else if (speed < 0) gear = "R";
-            else {
-                if (kmh < 60) gear = "1";
-                else if (kmh < 120) gear = "2";
-                else if (kmh < 180) gear = "3";
-                else if (kmh < 240) gear = "4";
-                else gear = "5";
-            }
-
-            drawGauge(kmh, gear);
-
-            // Camera follow
-            const targetCameraX = car.position.x - Math.sin(carAngle) * 12;
-            const targetCameraZ = car.position.z - Math.cos(carAngle) * 12;
-            camera.position.x += (targetCameraX - camera.position.x) * 0.1;
-            camera.position.z += (targetCameraZ - camera.position.z) * 0.1;
-            camera.position.y = car.position.y + 5;
-            
-            camera.lookAt(car.position.x, car.position.y + 1, car.position.z);
-
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
-</body>
-</html>
