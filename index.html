@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Phase 1 Sandbox</title>
+    <title>DriveX - Phase 1 Prototype</title>
     <style>
         body {
             margin: 0;
@@ -16,178 +16,127 @@
             top: 10px;
             left: 10px;
             color: white;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 15px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
             border-radius: 8px;
             pointer-events: none;
         }
-        h1 { margin: 0 0 5px 0; font-size: 18px; color: #ff3333; }
-        p { margin: 3px 0; font-size: 14px; }
     </style>
 </head>
 <body>
     <div id="info">
-        <h1>DriveX Prototype - Phase 1</h1>
-        <p><strong>W / S</strong>: Accelerate / Reverse</p>
-        <p><strong>A / D</strong>: Steer Left / Right</p>
-        <p><strong>Space</strong>: Handbrake</p>
+        <h3>DriveX - Phase 1</h3>
+        <p>Use <b>WASD</b> or <b>Arrow Keys</b> to drive.</p>
+        <p><b>Tip:</b> Hold Forward + Left/Right to spin 360 degrees!</p>
     </div>
 
-    <!-- Import Three.js via CDN -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+    <!-- Load Three.js from a public library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    <script type="module">
-        import * as THREE from 'three';
-
-        // 1. Scene, Camera, Renderer setup
+    <script>
+        // 1. Scene, Camera, and Renderer Setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x1a1a1a);
-        scene.fog = new THREE.FogExp2(0x1a1a1a, 0.015);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        // 2. Lighting
+        // 2. Add Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(20, 40, 20);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        scene.add(directionalLight);
 
-        // 3. Ground Plane (Road/Grid)
-        const groundGeo = new THREE.PlaneGeometry(200, 200);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
+        // 3. Create Ground (Road)
+        const groundGeometry = new THREE.PlaneGeometry(200, 200);
+        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
         scene.add(ground);
 
-        // Add a grid helper for visual depth
+        // Add a grid helper to see movement better
         const grid = new THREE.GridHelper(200, 50, 0x555555, 0x222222);
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // 4. Simple Car Creation
-        const carGroup = new THREE.Group();
-        
-        // Car Body
-        const bodyGeo = new THREE.BoxGeometry(1.8, 0.8, 4);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcc0000, roughness: 0.3, metalness: 0.8 });
-        const carBody = new THREE.Mesh(bodyGeo, bodyMat);
-        carBody.position.y = 0.6;
-        carBody.castShadow = true;
-        carGroup.add(carBody);
+        // 4. Create a Simple Car (Placeholder Box)
+        const carGeometry = new THREE.BoxGeometry(2, 1, 4);
+        const carMaterial = new THREE.MeshStandardMaterial({ color: 0x0077ff, metalness: 0.5, roughness: 0.2 });
+        const car = new THREE.Mesh(carGeometry, carMaterial);
+        car.position.y = 0.5;
+        scene.add(car);
 
-        // Car Cabin
-        const cabinGeo = new THREE.BoxGeometry(1.4, 0.6, 2);
-        const cabinMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.1 });
-        const carCabin = new THREE.Mesh(cabinGeo, cabinMat);
-        carCabin.position.set(0, 1.2, -0.2);
-        carCabin.castShadow = true;
-        carGroup.add(carCabin);
+        // Position camera behind the car
+        camera.position.set(0, 5, -10);
+        camera.lookAt(car.position);
 
-        // Wheels
-        const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 16);
-        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-        
-        const wheels = [];
-        const wheelPositions = [
-            [-1, 0.4, 1.3],  // Front Left
-            [1, 0.4, 1.3],   // Front Right
-            [-1, 0.4, -1.3], // Rear Left
-            [1, 0.4, -1.3]   // Rear Right
-        ];
+        // 5. Input Controls State (Supports WASD and Arrow Keys)
+        const keys = { forward: false, backward: false, left: false, right: false };
 
-        wheelPositions.forEach(pos => {
-            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-            wheel.rotation.z = Math.PI / 2;
-            wheel.position.set(...pos);
-            wheel.castShadow = true;
-            carGroup.add(wheel);
-            wheels.push(wheel);
-        });
+        window.addEventListener('keydown', (e) => updateKey(e, true));
+        window.addEventListener('keyup', (e) => updateKey(e, false));
 
-        scene.add(carGroup);
-        carGroup.position.y = 0;
-
-        // 5. Driving Physics Variables
-        const controls = { forward: false, backward: false, left: false, right: false, brake: false };
-        let speed = 0;
-        let steering = 0;
-        const maxSpeed = 0.4;
-        const acceleration = 0.005;
-        const deceleration = 0.008;
-        const turnSpeed = 0.03;
-
-        // Keyboard Event Listeners
-        window.addEventListener('keydown', (e) => updateKey(e.code, true));
-        window.addEventListener('keyup', (e) => updateKey(e.code, false));
-
-        function updateKey(code, isDown) {
-            switch(code) {
-                case 'KeyW': controls.forward = isDown; break;
-                case 'KeyS': controls.backward = isDown; break;
-                case 'KeyA': controls.left = isDown; break;
-                case 'KeyD': controls.right = isDown; break;
-                case 'Space': controls.brake = isDown; break;
+        function updateKey(e, isDown) {
+            switch(e.key.toLowerCase()) {
+                case 'w': case 'arrowup': keys.forward = isDown; break;
+                case 's': case 'arrowdown': keys.backward = isDown; break;
+                case 'a': case 'arrowleft': keys.left = isDown; break;
+                case 'd': case 'arrowright': keys.right = isDown; break;
             }
         }
 
-        // 6. Game Loop
+        // 6. Car Physics Variables
+        let speed = 0;
+        let maxSpeed = 0.6;
+        let acceleration = 0.015;
+        let deceleration = 0.008;
+        let turnSpeed = 0.04;
+        let carAngle = 0;
+
+        // 7. Animation / Game Loop
         function animate() {
             requestAnimationFrame(animate);
 
             // Handle Acceleration & Braking
-            if (controls.forward) {
+            if (keys.forward) {
                 speed = Math.min(speed + acceleration, maxSpeed);
-            } else if (controls.backward) {
+            } else if (keys.backward) {
                 speed = Math.max(speed - acceleration, -maxSpeed / 2);
             } else {
-                // Natural friction slow-down
-                if (speed > 0) speed = Math.max(0, speed - deceleration);
-                if (speed < 0) speed = Math.min(0, speed + deceleration);
+                // Natural slow down
+                if (speed > 0) speed = Math.max(speed - deceleration, 0);
+                if (speed < 0) speed = Math.min(speed + deceleration, 0);
             }
 
-            if (controls.brake) {
-                speed *= 0.9; // Hard brake
+            // Handle Steering (Allows sharp spinning / 360s when moving)
+            if (Math.abs(speed) > 0.005) {
+                let currentTurn = turnSpeed * (speed / maxSpeed);
+                if (keys.left) carAngle += currentTurn * 1.5; // Slightly boosted turn rate for 360 spins
+                if (keys.right) carAngle -= currentTurn * 1.5;
             }
 
-            // Handle Steering
-            if (controls.left) {
-                steering = Math.min(steering + 0.02, 0.6);
-            } else if (controls.right) {
-                steering = Math.max(steering - 0.02, -0.6);
-            } else {
-                steering *= 0.8; // Return wheels to center
-            }
+            // Update Car Position
+            car.rotation.y = carAngle;
+            car.position.x += Math.sin(carAngle) * speed;
+            car.position.z += Math.cos(carAngle) * speed;
 
-            // Move Car
-            if (Math.abs(speed) > 0.001) {
-                carGroup.rotation.y += steering * (speed * 2);
-                carGroup.translateZ(speed);
-            }
-
-            // Smooth Chase Camera Follow
-            const idealOffset = new THREE.Vector3(0, 4, -8).applyQuaternion(carGroup.quaternion);
-            const idealLookat = carGroup.position.clone().add(new THREE.Vector3(0, 1, 0));
+            // Smooth Camera Follow
+            const targetCameraX = car.position.x - Math.sin(carAngle) * 10;
+            const targetCameraZ = car.position.z - Math.cos(carAngle) * 10;
+            camera.position.x += (targetCameraX - camera.position.x) * 0.1;
+            camera.position.z += (targetCameraZ - camera.position.z) * 0.1;
+            camera.position.y = car.position.y + 4;
             
-            camera.position.lerp(carGroup.position.clone().add(idealOffset), 0.1);
-            camera.lookAt(idealLookat);
+            camera.lookAt(car.position.x, car.position.y + 1, car.position.z);
 
             renderer.render(scene, camera);
         }
+
+        animate();
 
         // Handle Window Resize
         window.addEventListener('resize', () => {
@@ -195,8 +144,6 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
-        animate();
     </script>
 </body>
 </html>
