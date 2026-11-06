@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Canvas Antique Gauge</title>
+    <title>DriveX - Drifting Edition</title>
     <style>
         body {
             margin: 0;
@@ -23,7 +23,6 @@
             pointer-events: none;
         }
         
-        /* GAUGE CANVAS POSITIONING */
         #gauge-canvas {
             position: absolute;
             bottom: 25px;
@@ -38,11 +37,11 @@
 </head>
 <body>
     <div id="info">
-        <h3 style="margin: 0 0 5px 0;">DriveX - Canvas Gauge</h3>
+        <h3 style="margin: 0 0 5px 0;">DriveX - Drifting Edition</h3>
         <p style="margin: 3px 0;">Use <b>WASD</b> or <b>Arrow Keys</b> to drive.</p>
+        <p style="margin: 3px 0; color: #ffcc00;"><b>Hold SPACEBAR</b> while turning to Drift!</p>
     </div>
 
-    <!-- CANVAS RETRO GAUGE -->
     <canvas id="gauge-canvas" width="400" height="400"></canvas>
 
     <!-- Three.js library -->
@@ -64,7 +63,7 @@
 
             ctx.clearRect(0, 0, w, h);
 
-            // A. Outer Brass Bezel
+            // Bezel
             const gradBezel = ctx.createRadialGradient(cx, cy, radius - 15, cx, cy, radius);
             gradBezel.addColorStop(0, '#e5d8b5');
             gradBezel.addColorStop(0.5, '#a6936d');
@@ -75,7 +74,7 @@
             ctx.fillStyle = gradBezel;
             ctx.fill();
 
-            // B. Parchment Dial Face
+            // Face
             const gradFace = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius - 15);
             gradFace.addColorStop(0, '#f8f4eb');
             gradFace.addColorStop(0.85, '#eee5d3');
@@ -86,7 +85,7 @@
             ctx.fillStyle = gradFace;
             ctx.fill();
 
-            // C. Brand Text
+            // Text
             ctx.fillStyle = '#3a3325';
             ctx.font = 'bold 13px "Times New Roman"';
             ctx.textAlign = 'center';
@@ -95,7 +94,7 @@
             ctx.font = 'bold 12px "Times New Roman"';
             ctx.fillText('COMPRESSED AIR', cx, cy + 95);
 
-            // D. Gear Box
+            // Gear Box
             ctx.fillStyle = 'rgba(0,0,0,0.06)';
             ctx.fillRect(cx - 16, cy - 65, 32, 26);
             ctx.strokeStyle = 'rgba(0,0,0,0.2)';
@@ -106,20 +105,19 @@
             ctx.font = 'bold 20px monospace';
             ctx.fillText(gear, cx, cy - 45);
 
-            // E. Digital Speed Text
+            // Speed Text
             ctx.fillStyle = '#444';
             ctx.font = 'bold 16px monospace';
             ctx.fillText(`${kmh} KM/H`, cx, cy + 125);
 
-            // F. Ticks and Numbers (-135 deg to +135 deg sweep)
+            // Ticks & Numbers
             const minAngle = -135 * (Math.PI / 180);
             const maxAngle = 135 * (Math.PI / 180);
-            const totalSteps = 12; // 0 to 300 step 25
+            const totalSteps = 12;
 
             for (let i = 0; i <= totalSteps; i++) {
                 const angle = minAngle + (i / totalSteps) * (maxAngle - minAngle) - (Math.PI / 2);
                 
-                // Tick mark
                 const innerR = radius - 30;
                 const outerR = radius - 18;
                 const x1 = cx + innerR * Math.cos(angle);
@@ -134,7 +132,6 @@
                 ctx.lineWidth = 3;
                 ctx.stroke();
 
-                // Numbers
                 const numR = radius - 48;
                 const nx = cx + numR * Math.cos(angle);
                 const ny = cy + numR * Math.sin(angle) + 5;
@@ -143,7 +140,7 @@
                 ctx.fillText(i * 25, nx, ny);
             }
 
-            // G. Needle
+            // Needle
             const speedClamped = Math.min(kmh, 300);
             const needleAngle = minAngle + (speedClamped / 300) * (maxAngle - minAngle) - (Math.PI / 2);
             
@@ -159,10 +156,9 @@
             ctx.closePath();
             ctx.fillStyle = '#1a1a1a';
             ctx.fill();
-
             ctx.restore();
 
-            // H. Center Needle Hub
+            // Hub
             ctx.beginPath();
             ctx.arc(cx, cy, 14, 0, Math.PI * 2);
             ctx.fillStyle = '#333';
@@ -183,17 +179,16 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(10, 20, 10);
         scene.add(directionalLight);
 
         const mapSize = 180;
-        const groundGeometry = new THREE.PlaneGeometry(mapSize, mapSize);
-        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.8 });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(mapSize, mapSize),
+            new THREE.MeshStandardMaterial({ color: 0x2b2b30, roughness: 0.8 })
+        );
         ground.rotation.x = -Math.PI / 2;
         scene.add(ground);
 
@@ -202,34 +197,32 @@
         scene.add(grid);
 
         const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8c7853, roughness: 0.4 });
-        const wallHeight = 3;
-        const wallThickness = 2;
         const halfMap = mapSize / 2;
-
         function createWall(x, z, width, depth) {
-            const wallGeo = new THREE.BoxGeometry(width, wallHeight, depth);
-            const wall = new THREE.Mesh(wallGeo, wallMaterial);
-            wall.position.set(x, wallHeight / 2, z);
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 3, depth), wallMaterial);
+            wall.position.set(x, 1.5, z);
             scene.add(wall);
         }
+        createWall(0, -halfMap, mapSize, 2);
+        createWall(0, halfMap, mapSize, 2);
+        createWall(-halfMap, 0, 2, mapSize);
+        createWall(halfMap, 0, 2, mapSize);
 
-        createWall(0, -halfMap, mapSize, wallThickness);
-        createWall(0, halfMap, mapSize, wallThickness);
-        createWall(-halfMap, 0, wallThickness, mapSize);
-        createWall(halfMap, 0, wallThickness, mapSize);
-
-        const carGeometry = new THREE.BoxGeometry(2, 1, 4);
-        const carMaterial = new THREE.MeshStandardMaterial({ color: 0xb8a47e, metalness: 0.5, roughness: 0.3 });
-        const car = new THREE.Mesh(carGeometry, carMaterial);
+        const car = new THREE.Mesh(
+            new THREE.BoxGeometry(2, 1, 4),
+            new THREE.MeshStandardMaterial({ color: 0xb8a47e, metalness: 0.5, roughness: 0.3 })
+        );
         car.position.y = 0.5;
         scene.add(car);
 
-        const keys = { forward: false, backward: false, left: false, right: false };
+        // Input Mapping
+        const keys = { forward: false, backward: false, left: false, right: false, drift: false };
 
         window.addEventListener('keydown', (e) => updateKey(e, true));
         window.addEventListener('keyup', (e) => updateKey(e, false));
 
         function updateKey(e, isDown) {
+            if (e.code === 'Space') { keys.drift = isDown; e.preventDefault(); return; }
             switch(e.key.toLowerCase()) {
                 case 'w': case 'arrowup': keys.forward = isDown; break;
                 case 's': case 'arrowdown': keys.backward = isDown; break;
@@ -238,12 +231,15 @@
             }
         }
 
+        // Physics & Drift Variables
         let speed = 0;
         let maxSpeed = 0.9;
         let acceleration = 0.015;
         let deceleration = 0.008;
         let turnSpeed = 0.04;
         let carAngle = 0;
+        let velocityX = 0;
+        let velocityZ = 0;
 
         const limit = halfMap - 3;
 
@@ -253,6 +249,7 @@
         function animate() {
             requestAnimationFrame(animate);
 
+            // Acceleration
             if (keys.forward) {
                 speed = Math.min(speed + acceleration, maxSpeed);
             } else if (keys.backward) {
@@ -262,16 +259,37 @@
                 if (speed < 0) speed = Math.min(speed + deceleration, 0);
             }
 
+            // Steering & Drifting Mechanics
             if (Math.abs(speed) > 0.005) {
                 let currentTurn = turnSpeed * (speed / maxSpeed);
-                if (keys.left) carAngle += currentTurn * 1.5;
-                if (keys.right) carAngle -= currentTurn * 1.5;
+                
+                // If drifting (holding spacebar), increase turn reactivity and slide momentum
+                if (keys.drift) {
+                    currentTurn *= 1.8;
+                }
+
+                if (keys.left) carAngle += currentTurn;
+                if (keys.right) carAngle -= currentTurn;
+            }
+
+            // Calculate movement vector with drift inertia sliding
+            const forwardX = Math.sin(carAngle) * speed;
+            const forwardZ = Math.cos(carAngle) * speed;
+
+            if (keys.drift && Math.abs(speed) > 0.3) {
+                // Blend forward motion with sideways drift momentum
+                velocityX = velocityX * 0.92 + forwardX * 0.08;
+                velocityZ = velocityZ * 0.92 + forwardZ * 0.08;
+            } else {
+                velocityX = forwardX;
+                velocityZ = forwardZ;
             }
 
             car.rotation.y = carAngle;
-            car.position.x += Math.sin(carAngle) * speed;
-            car.position.z += Math.cos(carAngle) * speed;
+            car.position.x += velocityX;
+            car.position.z += velocityZ;
 
+            // Boundaries Crash Check
             let crashed = false;
             if (car.position.x > limit) { car.position.x = limit; crashed = true; }
             if (car.position.x < -limit) { car.position.x = -limit; crashed = true; }
@@ -279,10 +297,12 @@
             if (car.position.z < -limit) { car.position.z = -limit; crashed = true; }
 
             if (crashed) {
-                speed = -speed * 0.5;
+                speed = -speed * 0.4;
+                velocityX = 0;
+                velocityZ = 0;
             }
 
-            // Speed & Gear calculation
+            // Speed & Gear
             const kmh = Math.round(Math.abs(speed) * 300);
             let gear = "P";
             if (Math.abs(speed) < 0.01) gear = "P";
@@ -295,7 +315,6 @@
                 else gear = "5";
             }
 
-            // Render Canvas Gauge
             drawGauge(kmh, gear);
 
             // Camera follow
