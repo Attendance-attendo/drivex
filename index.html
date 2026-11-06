@@ -3,40 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Fixed Minimap</title>
+    <title>DriveX - BeamNG Style Edition</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background-color: #111;
             font-family: sans-serif;
+            user-select: none;
         }
+
+        /* TOP-CENTER SURVIVAL CHANCE BAR */
+        #survival-hud {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ff6600;
+            padding: 8px 25px;
+            border-radius: 6px;
+            color: #fff;
+            text-align: center;
+            display: none;
+            z-index: 50;
+            pointer-events: none;
+        }
+        #survival-hud h3 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            letter-spacing: 1px;
+            color: #ffaa00;
+        }
+        #survival-hud span {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00ff66;
+        }
+
         #info {
             position: absolute;
             top: 15px;
             left: 15px;
             color: #d4c39e;
             background: rgba(20,20,20,0.85);
-            padding: 12px 18px;
+            padding: 10px 15px;
             border-radius: 8px;
             border: 2px solid #b8a47e;
             pointer-events: none;
             z-index: 10;
+            font-size: 13px;
         }
         
         #gauge-canvas {
             position: absolute;
             bottom: 25px;
             right: 25px;
-            width: 220px;
-            height: 220px;
+            width: 200px;
+            height: 200px;
             border-radius: 50%;
             box-shadow: 0 10px 25px rgba(0,0,0,0.8);
             pointer-events: none;
             z-index: 10;
         }
 
-        /* FIXED MINI-MAP POSITIONING */
+        /* MINI-MAP (Top Left) */
         #minimap {
             position: absolute;
             top: 15px;
@@ -51,74 +82,106 @@
             z-index: 10;
         }
 
-        /* POPUP MENUS (T & E) */
+        /* MODAL MENUS MATCHING SCREENSHOTS */
         .modal-menu {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(18, 18, 22, 0.95);
-            border: 3px solid #b8a47e;
-            padding: 25px 35px;
-            border-radius: 12px;
-            color: #f4eee2;
+            background: rgba(25, 25, 30, 0.96);
+            border: 3px solid #ff6600;
+            padding: 30px;
+            border-radius: 10px;
+            color: #fff;
             text-align: center;
-            box-shadow: 0 0 30px rgba(0,0,0,0.9);
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
             display: none;
             z-index: 100;
-            font-family: 'Times New Roman', Times, serif;
-            min-width: 280px;
+            font-family: sans-serif;
+            width: 650px;
         }
         .modal-menu h2 {
             margin-top: 0;
-            color: #e5d8b5;
+            color: #ffaa00;
             letter-spacing: 1px;
+            text-align: left;
+            border-bottom: 2px solid #ff6600;
+            padding-bottom: 10px;
         }
-        .modal-menu p {
-            font-size: 16px;
-            line-height: 1.5;
+        .map-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
         }
-        .map-option {
-            background: #2b2b30;
-            border: 1px solid #8c7853;
-            color: #f4eee2;
-            padding: 10px;
-            margin: 8px 0;
+        .map-card {
+            background: #1a1a20;
+            border: 2px solid #ff6600;
             border-radius: 6px;
+            padding: 15px;
             cursor: pointer;
-            font-weight: bold;
+            transition: 0.2s;
+            text-align: left;
         }
-        .map-option:hover {
-            background: #8c7853;
-            color: #111;
+        .map-card:hover {
+            background: #ff6600;
+            color: #000;
+        }
+        .map-card h3 {
+            margin: 0 0 5px 0;
+            color: #fff;
+        }
+        .map-card:hover h3 {
+            color: #000;
+        }
+        .map-card p {
+            margin: 0;
+            font-size: 12px;
+            color: #aaa;
+        }
+        .map-card:hover p {
+            color: #222;
         }
     </style>
 </head>
 <body>
     <div id="info">
-        <h3 style="margin: 0 0 5px 0;">DriveX - Feature Edition</h3>
+        <h3 style="margin: 0 0 5px 0;">DriveX Engine</h3>
         <p style="margin: 3px 0;"><b>W/S</b> Drive | <b>A/D</b> Steer | <b>Space</b> Handbrake</p>
-        <p style="margin: 3px 0; color: #ffcc00;"><b>T</b>: Survival Chance | <b>E</b>: Change Map</p>
+        <p style="margin: 3px 0; color: #ffcc00;"><b>T</b>: Toggle Survival Chance | <b>E</b>: Select Location</p>
+    </div>
+
+    <!-- TOP CENTER SURVIVAL CHANCE HUD -->
+    <div id="survival-hud">
+        <h3>Survival Chance</h3>
+        <span id="risk-text">100%</span>
     </div>
 
     <canvas id="gauge-canvas" width="400" height="400"></canvas>
     <canvas id="minimap" width="200" height="200"></canvas>
 
-    <!-- T KEY MENU: SURVIVAL CHANCE -->
-    <div id="survival-menu" class="modal-menu">
-        <h2>SURVIVAL CHANCE</h2>
-        <p>Current Speed Risk: <span id="risk-text" style="color: #00ffcc; font-weight: bold;">SAFE</span></p>
-        <p style="font-size: 13px; color: #aaa;">Based on current velocity, obstacle proximity, and structural integrity.</p>
-        <p style="font-size: 11px; color: #8c7853; margin-top: 15px;">Press [ T ] to close</p>
-    </div>
-
-    <!-- E KEY MENU: CHANGE MAP -->
+    <!-- E KEY MENU: SELECT LOCATION (MATCHING SCREENSHOT) -->
     <div id="map-menu" class="modal-menu">
-        <h2>SELECT MAP</h2>
-        <div class="map-option" onclick="changeMap('city')">City Grid (Standard)</div>
-        <div class="map-option" onclick="changeMap('desert')">Desert Dunes (Sandy)</div>
-        <div class="map-option" onclick="changeMap('airport')">Airport Runway (Open Asphalt)</div>
-        <p style="font-size: 11px; color: #8c7853; margin-top: 15px;">Press [ E ] to close</p>
+        <h2>SELECT LOCATION</h2>
+        <div class="map-grid">
+            <div class="map-card" onclick="changeMap('utah')">
+                <h3>UTAH</h3>
+                <p>Desert canyons, dirt tracks, and rocky terrain.</p>
+            </div>
+            <div class="map-card" onclick="changeMap('gridmap')">
+                <h3>GRIDMAP</h3>
+                <p>Testing facility with ramps, obstacles, and flat asphalt.</p>
+            </div>
+            <div class="map-card" onclick="changeMap('michigan')">
+                <h3>MICHIGAN</h3>
+                <p>Dense forests, winding countryside roads, and mud.</p>
+            </div>
+            <div class="map-card" onclick="changeMap('newyork')">
+                <h3>NEW YORK</h3>
+                <p>Urban city blocks, tight corners, and towering buildings.</p>
+            </div>
+        </div>
+        <p style="font-size: 11px; color: #aaa; margin-top: 20px;">Press [ E ] to close</p>
     </div>
 
     <!-- Three.js library -->
@@ -284,14 +347,17 @@
 
         // --- MAP SWITCHING FUNCTION ---
         function changeMap(type) {
-            if (type === 'city') {
-                groundMat.color.setHex(0x2b2b30);
+            if (type === 'gridmap') {
+                groundMat.color.setHex(0x3a4a5b);
                 grid.visible = true;
-            } else if (type === 'desert') {
-                groundMat.color.setHex(0xd1b279);
+            } else if (type === 'utah') {
+                groundMat.color.setHex(0xd1b279); // Desert Sand
                 grid.visible = false;
-            } else if (type === 'airport') {
-                groundMat.color.setHex(0x1a1a1a);
+            } else if (type === 'michigan') {
+                groundMat.color.setHex(0x385c38); // Forest Green
+                grid.visible = false;
+            } else if (type === 'newyork') {
+                groundMat.color.setHex(0x1c1c1c); // Dark asphalt
                 grid.visible = false;
             }
             document.getElementById('map-menu').style.display = 'none';
@@ -357,8 +423,8 @@
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space') { keys.handbrake = true; e.preventDefault(); return; }
             if (e.key.toLowerCase() === 't') {
-                const menu = document.getElementById('survival-menu');
-                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                const hud = document.getElementById('survival-hud');
+                hud.style.display = hud.style.display === 'block' ? 'none' : 'block';
             }
             if (e.key.toLowerCase() === 'e') {
                 const menu = document.getElementById('map-menu');
@@ -383,7 +449,7 @@
             }
         });
 
-        // Physics & Tuning Variables
+        // Physics Variables
         let speed = 0;
         let maxSpeed = 0.9;
         let acceleration = 0.012;
@@ -394,6 +460,7 @@
         let carAngle = 0;
         let velocityX = 0;
         let velocityZ = 0;
+        let survivalChance = 100;
 
         const limit = halfMap - 3;
 
@@ -473,9 +540,13 @@
             if (car.position.z < -limit) { car.position.z = -limit; crashed = true; }
 
             if (crashed) {
+                const impactSpeed = Math.abs(speed);
                 speed = -speed * 0.4;
                 velocityX = 0;
                 velocityZ = 0;
+                if (impactSpeed > 0.4) {
+                    survivalChance = Math.max(0, survivalChance - Math.round(impactSpeed * 30));
+                }
             }
 
             const kmh = Math.round(Math.abs(speed) * 300);
@@ -494,14 +565,12 @@
             renderMinimap();
 
             const riskText = document.getElementById('risk-text');
-            if (kmh > 200) {
-                riskText.innerText = "CRITICAL";
+            riskText.innerText = survivalChance + "%";
+            if (survivalChance < 40) {
                 riskText.style.color = "#ff3300";
-            } else if (kmh > 100) {
-                riskText.innerText = "MODERATE";
+            } else if (survivalChance < 75) {
                 riskText.style.color = "#ffcc00";
             } else {
-                riskText.innerText = "SAFE";
                 riskText.style.color = "#00ffcc";
             }
 
@@ -518,7 +587,6 @@
 
         animate();
 
-        window.innerWidth = window.innerWidth;
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
