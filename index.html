@@ -3,60 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Phase 1 with Crash Physics</title>
+    <title>DriveX - Phase 1 with Retro Gauge</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background-color: #111;
-            font-family: sans-serif;
+            font-family: 'Courier New', Courier, monospace;
         }
         #info {
             position: absolute;
             top: 10px;
             left: 10px;
-            color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 10px 15px;
+            color: #00ffcc;
+            background: rgba(0,0,0,0.85);
+            padding: 12px 18px;
             border-radius: 8px;
+            border: 2px solid #00ffcc;
+            box-shadow: 0 0 10px rgba(0,255,204,0.3);
             pointer-events: none;
         }
-        #speedometer {
+        
+        /* RETRO DASHBOARD DIAL */
+        #retro-gauge {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 15px 25px;
-            border-radius: 8px;
-            font-size: 20px;
-            font-weight: bold;
+            bottom: 25px;
+            right: 25px;
+            width: 170px;
+            height: 170px;
+            background: radial-gradient(circle, #1a1a1a 60%, #050505 100%);
+            border: 4px solid #333;
+            outline: 2px solid #ff9900;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255,153,0,0.4), inset 0 0 20px rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             pointer-events: none;
+        }
+
+        /* DIGITAL GEAR DISPLAY */
+        #gear-indicator {
+            position: absolute;
+            top: 35px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff3300;
+            text-shadow: 0 0 8px #ff3300;
+        }
+
+        #gear-label {
+            position: absolute;
+            top: 22px;
+            font-size: 9px;
+            color: #888;
+            letter-spacing: 1px;
+        }
+
+        /* DIGITAL SPEED NUMERIC */
+        #digital-speed {
+            position: absolute;
+            bottom: 28px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #ff9900;
+            text-shadow: 0 0 5px #ff9900;
+        }
+
+        #unit-label {
+            position: absolute;
+            bottom: 14px;
+            font-size: 8px;
+            color: #666;
+            letter-spacing: 1px;
+        }
+
+        /* ANALOG NEEDLE */
+        #needle-hub {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #ff3300;
+            border-radius: 50%;
+            box-shadow: 0 0 6px #ff3300;
+            z-index: 10;
+        }
+
+        #needle {
+            position: absolute;
+            width: 3px;
+            height: 65px;
+            background: linear-gradient(to top, #ff0000, #ff9900);
+            bottom: 50%;
+            transform-origin: bottom center;
+            transform: rotate(-120deg);
+            transition: transform 0.05s linear;
+            border-radius: 2px;
+            box-shadow: 0 0 6px #ff3300;
         }
     </style>
 </head>
 <body>
     <div id="info">
-        <h3>DriveX - Phase 1</h3>
-        <p>Use <b>WASD</b> or <b>Arrow Keys</b> to drive.</p>
-        <p><b>Drive into the outer walls to test crash physics!</b></p>
+        <h3 style="margin: 0 0 5px 0;">DriveX - RETRO EDITION</h3>
+        <p style="margin: 3px 0;">Use <b>WASD</b> or <b>Arrow Keys</b> to drive.</p>
+        <p style="margin: 3px 0;">Crash boundaries active!</p>
     </div>
-    <div id="speedometer">Speed: 0 km/h</div>
 
-    <!-- Load Three.js from a public library -->
+    <!-- RETRO SPEEDOMETER & GEAR GAUGE -->
+    <div id="retro-gauge">
+        <div id="gear-label">GEAR</div>
+        <div id="gear-indicator">P</div>
+        
+        <div id="needle"></div>
+        <div id="needle-hub"></div>
+        
+        <div id="digital-speed">0</div>
+        <div id="unit-label">KM/H</div>
+    </div>
+
+    <!-- Three.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // 1. Scene, Camera, and Renderer Setup
+        // 1. Scene & Camera Setup
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a1a1a);
+        scene.background = new THREE.Color(0x111116);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 2. Add Lighting
+        // 2. Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
 
@@ -64,20 +144,20 @@
         directionalLight.position.set(10, 20, 10);
         scene.add(directionalLight);
 
-        // 3. Create Ground (Road)
+        // 3. Ground & Grid
         const mapSize = 180;
         const groundGeometry = new THREE.PlaneGeometry(mapSize, mapSize);
-        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x222225, roughness: 0.8 });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         scene.add(ground);
 
-        const grid = new THREE.GridHelper(mapSize, 40, 0x555555, 0x222222);
+        const grid = new THREE.GridHelper(mapSize, 40, 0x00ffcc, 0x333344);
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // 4. Create Crash Walls (Boundaries)
-        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.4 });
+        // 4. Boundary Crash Walls
+        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xff3300, roughness: 0.4 });
         const wallHeight = 3;
         const wallThickness = 2;
         const halfMap = mapSize / 2;
@@ -89,20 +169,19 @@
             scene.add(wall);
         }
 
-        // North, South, East, West Walls
-        createWall(0, -halfMap, mapSize, wallThickness); // North
-        createWall(0, halfMap, mapSize, wallThickness);  // South
-        createWall(-halfMap, 0, wallThickness, mapSize); // West
-        createWall(halfMap, 0, wallThickness, mapSize);  // East
+        createWall(0, -halfMap, mapSize, wallThickness);
+        createWall(0, halfMap, mapSize, wallThickness);
+        createWall(-halfMap, 0, wallThickness, mapSize);
+        createWall(halfMap, 0, wallThickness, mapSize);
 
-        // 5. Create Car
+        // 5. Car Body
         const carGeometry = new THREE.BoxGeometry(2, 1, 4);
-        const carMaterial = new THREE.MeshStandardMaterial({ color: 0x0077ff, metalness: 0.5, roughness: 0.2 });
+        const carMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffcc, metalness: 0.6, roughness: 0.2 });
         const car = new THREE.Mesh(carGeometry, carMaterial);
         car.position.y = 0.5;
         scene.add(car);
 
-        // 6. Input Controls State
+        // 6. Keyboard State
         const keys = { forward: false, backward: false, left: false, right: false };
 
         window.addEventListener('keydown', (e) => updateKey(e, true));
@@ -117,21 +196,26 @@
             }
         }
 
-        // 7. Car Physics Variables
+        // 7. Physics & Drive Variables
         let speed = 0;
-        let maxSpeed = 0.8;
+        let maxSpeed = 0.9;
         let acceleration = 0.015;
         let deceleration = 0.008;
         let turnSpeed = 0.04;
         let carAngle = 0;
 
-        const limit = halfMap - 3; // Collision boundary limit
+        const limit = halfMap - 3;
 
-        // 8. Animation / Game Loop
+        // UI DOM References
+        const needle = document.getElementById('needle');
+        const digitalSpeed = document.getElementById('digital-speed');
+        const gearIndicator = document.getElementById('gear-indicator');
+
+        // 8. Game Loop
         function animate() {
             requestAnimationFrame(animate);
 
-            // Handle Acceleration & Braking
+            // Handle Drive
             if (keys.forward) {
                 speed = Math.min(speed + acceleration, maxSpeed);
             } else if (keys.backward) {
@@ -141,42 +225,49 @@
                 if (speed < 0) speed = Math.min(speed + deceleration, 0);
             }
 
-            // Handle Steering
+            // Steering
             if (Math.abs(speed) > 0.005) {
                 let currentTurn = turnSpeed * (speed / maxSpeed);
                 if (keys.left) carAngle += currentTurn * 1.5;
                 if (keys.right) carAngle -= currentTurn * 1.5;
             }
 
-            // Move Car
+            // Movement
             car.rotation.y = carAngle;
             car.position.x += Math.sin(carAngle) * speed;
             car.position.z += Math.cos(carAngle) * speed;
 
-            // --- CRASH PHYSICS DETECTION ---
+            // Crash Check
             let crashed = false;
-            if (car.position.x > limit) {
-                car.position.x = limit;
-                crashed = true;
-            } else if (car.position.x < -limit) {
-                car.position.x = -limit;
-                crashed = true;
-            }
-            if (car.position.z > limit) {
-                car.position.z = limit;
-                crashed = true;
-            } else if (car.position.z < -limit) {
-                car.position.z = -limit;
-                crashed = true;
-            }
+            if (car.position.x > limit) { car.position.x = limit; crashed = true; }
+            if (car.position.x < -limit) { car.position.x = -limit; crashed = true; }
+            if (car.position.z > limit) { car.position.z = limit; crashed = true; }
+            if (car.position.z < -limit) { car.position.z = -limit; crashed = true; }
 
-            // If a crash happened, bounce back speed heavily
             if (crashed) {
-                speed = -speed * 0.5; // Reverse and lose energy on impact
+                speed = -speed * 0.5;
             }
 
-            // Update Speedometer UI
-            document.getElementById('speedometer').innerText = `Speed: ${Math.round(Math.abs(speed) * 120)} km/h`;
+            // --- RETRO GAUGE UPDATES ---
+            const kmh = Math.round(Math.abs(speed) * 130);
+            digitalSpeed.innerText = kmh;
+
+            // Rotate needle: -120 deg (0 km/h) to +120 deg (120+ km/h)
+            const needleAngle = -120 + Math.min(kmh, 120) * 2;
+            needle.style.transform = `rotate(${needleAngle}deg)`;
+
+            // Calculate Retro Gear Shift Logic
+            if (Math.abs(speed) < 0.01) {
+                gearIndicator.innerText = "P";
+            } else if (speed < 0) {
+                gearIndicator.innerText = "R";
+            } else {
+                if (kmh < 25) gearIndicator.innerText = "1";
+                else if (kmh < 50) gearIndicator.innerText = "2";
+                else if (kmh < 75) gearIndicator.innerText = "3";
+                else if (kmh < 100) gearIndicator.innerText = "4";
+                else gearIndicator.innerText = "5";
+            }
 
             // Smooth Camera Follow
             const targetCameraX = car.position.x - Math.sin(carAngle) * 12;
@@ -192,7 +283,7 @@
 
         animate();
 
-        // Handle Window Resize
+        // Window Resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
