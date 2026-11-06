@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveX - Antique Gauge Edition</title>
+    <title>DriveX - Fixed Antique Gauge</title>
     <style>
         body {
             margin: 0;
@@ -20,92 +20,100 @@
             padding: 12px 18px;
             border-radius: 8px;
             border: 2px solid #b8a47e;
-            box-shadow: 0 0 10px rgba(184,164,126,0.3);
             pointer-events: none;
             font-family: sans-serif;
         }
         
-        /* ANTIQUE BRASS / STEEL GAUGE BEZEL */
+        /* GAUGE CONTAINER */
         #retro-gauge {
             position: absolute;
             bottom: 25px;
             right: 25px;
-            width: 210px;
-            height: 210px;
+            width: 220px;
+            height: 220px;
             background: radial-gradient(circle, #f4eee2 60%, #dcd2be 100%);
             border: 8px solid;
-            border-color: #e5d8b5 #a6936d #6b5c3f #c8b793; /* Metallic 3D bevel effect */
+            border-color: #e5d8b5 #a6936d #6b5c3f #c8b793;
             border-radius: 50%;
             box-shadow: 0 10px 25px rgba(0,0,0,0.8), inset 0 0 25px rgba(70,55,30,0.3);
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             pointer-events: none;
         }
 
-        /* GAUGE FACE DETAILS & TICKS */
-        .tick {
-            position: absolute;
-            width: 2px;
-            height: 8px;
-            background: #2b2b2b;
-            top: 10px;
-            left: calc(50% - 1px);
-            transform-origin: bottom center;
-        }
-        .tick-major {
-            width: 3px;
-            height: 12px;
-            background: #111;
-        }
-
+        /* DIAL LABELS & TEXT */
         .dial-number {
             position: absolute;
             font-size: 11px;
             font-weight: bold;
             color: #2b2b2b;
             font-family: 'Courier New', Courier, monospace;
+            width: 25px;
+            text-align: center;
         }
 
-        /* BRANDING & TEXT ON DIAL */
         #dial-brand {
             position: absolute;
-            top: 60px;
+            top: 52px;
+            font-size: 7px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            color: #3a3325;
+            text-align: center;
+            width: 100%;
+        }
+
+        #dial-subtext {
+            position: absolute;
+            bottom: 52px;
             font-size: 8px;
             font-weight: bold;
             letter-spacing: 1.5px;
             color: #3a3325;
             text-align: center;
-            width: 130px;
-        }
-
-        #dial-subtext {
-            position: absolute;
-            bottom: 55px;
-            font-size: 9px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            color: #3a3325;
+            width: 100%;
         }
 
         /* DIGITAL GEAR DISPLAY */
         #gear-box {
             position: absolute;
-            top: 78px;
-            background: rgba(0,0,0,0.08);
+            top: 72px;
+            background: rgba(0,0,0,0.06);
             border: 1px solid rgba(0,0,0,0.2);
-            padding: 1px 8px;
+            padding: 0px 6px;
             border-radius: 4px;
         }
         #gear-indicator {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             color: #a02020;
             font-family: monospace;
         }
 
-        /* ANALOG NEEDLE */
+        /* ANALOG NEEDLE (Anchored at Center) */
+        #needle-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-135deg);
+            transition: transform 0.05s linear;
+        }
+
+        #needle {
+            position: absolute;
+            width: 3px;
+            height: 70px;
+            background: #1a1a1a;
+            bottom: 50%;
+            border-radius: 2px 2px 0 0;
+        }
+
         #needle-hub {
             position: absolute;
             width: 14px;
@@ -116,36 +124,15 @@
             z-index: 10;
         }
 
-        #needle {
-            position: absolute;
-            width: 3px;
-            height: 75px;
-            background: #1a1a1a;
-            bottom: 50%;
-            transform-origin: bottom center;
-            transform: rotate(-135deg);
-            transition: transform 0.05s linear;
-            border-radius: 2px 2px 0 0;
-        }
-        /* Needle tail counter-weight */
-        #needle::after {
-            content: '';
-            position: absolute;
-            bottom: -15px;
-            left: -1px;
-            width: 5px;
-            height: 15px;
-            background: #1a1a1a;
-            border-radius: 0 0 2px 2px;
-        }
-
         #digital-speed {
             position: absolute;
-            bottom: 35px;
-            font-size: 12px;
+            bottom: 32px;
+            font-size: 11px;
             font-weight: bold;
             color: #444;
             font-family: monospace;
+            text-align: center;
+            width: 100%;
         }
     </style>
 </head>
@@ -157,12 +144,14 @@
 
     <!-- ANTIQUE GAUGE -->
     <div id="retro-gauge">
-        <!-- Ticks and Numbers generated dynamically or placed in layout -->
         <div id="dial-brand">BETHLEHEM STEEL CO.</div>
         <div id="gear-box"><span id="gear-indicator">P</span></div>
         <div id="dial-subtext">COMPRESSED AIR</div>
         
-        <div id="needle"></div>
+        <!-- Rotating Needle Container -->
+        <div id="needle-container">
+            <div id="needle"></div>
+        </div>
         <div id="needle-hub"></div>
         
         <div id="digital-speed">0 KM/H</div>
@@ -172,21 +161,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // Generate Antique Dial Numbers and Ticks around the circle
+        // Generate Dial Numbers cleanly in a full circle arc (-135deg to +135deg)
         const gaugeContainer = document.getElementById('retro-gauge');
-        const totalTicks = 25;
-        const minAngle = -135;
-        const maxAngle = 135;
+        const radius = 75; // Distance from center
+        const centerX = 110;
+        const centerY = 110;
 
         for (let i = 0; i <= 12; i++) {
-            const angleDeg = minAngle + (i / 12) * (maxAngle - minAngle);
+            const val = i * 25; // 0 to 300
+            // Map 0-12 steps to -135deg to +135deg (270 degree total sweep)
+            const angleDeg = -135 + (i / 12) * 270;
             const angleRad = (angleDeg - 90) * (Math.PI / 180);
             
-            // Numbers (0 to 300 step 25)
-            const val = i * 25;
-            const radius = 68;
-            const x = 105 + radius * Math.cos(angleRad) - 10;
-            const y = 105 + radius * Math.sin(angleRad) - 8;
+            const x = centerX + radius * Math.cos(angleRad) - 12;
+            const y = centerY + radius * Math.sin(angleRad) - 8;
             
             const numDiv = document.createElement('div');
             numDiv.className = 'dial-number';
@@ -276,7 +264,7 @@
         const limit = halfMap - 3;
 
         // DOM References
-        const needle = document.getElementById('needle');
+        const needleContainer = document.getElementById('needle-container');
         const digitalSpeed = document.getElementById('digital-speed');
         const gearIndicator = document.getElementById('gear-indicator');
 
@@ -313,13 +301,13 @@
                 speed = -speed * 0.5;
             }
 
-            // --- ANTIQUE GAUGE UPDATES ---
-            const kmh = Math.round(Math.abs(speed) * 300); // Scale up to 300 max on dial
+            // --- GAUGE UPDATES ---
+            const kmh = Math.round(Math.abs(speed) * 300);
             digitalSpeed.innerText = `${kmh} KM/H`;
 
-            // Needle angle mapping: -135deg (0) to +135deg (300)
+            // Needle angle mapping: -135deg (0 km/h) to +135deg (300 km/h)
             const needleAngle = -135 + (Math.min(kmh, 300) / 300) * 270;
-            needle.style.transform = `rotate(${needleAngle}deg)`;
+            needleContainer.style.transform = `rotate(${needleAngle}deg)`;
 
             // Gear Shift Logic
             if (Math.abs(speed) < 0.01) {
